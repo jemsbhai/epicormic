@@ -8,6 +8,16 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.scorers`: the `Scorer` protocol, twelve built-in value-free
+  scorers (`normalized_match`, `exact_match`, `tool_call_set_jaccard`,
+  `tool_call_count`, `refusal`, `truncated`, `output_chars`,
+  `output_tokens`, `input_tokens`, `latency_s`, `cost_usd`, `energy_j`),
+  per-probe `Reference` summaries built from baseline windows, `ScoreTable`,
+  and `resolve_scorers` with caller-supplied scorers. The normalized
+  projection reproduces pollard's comparator semantics with a
+  property-based conformance test; finish-reason detection covers the
+  OpenAI Chat and Responses, Anthropic Messages, Bedrock Converse, and
+  plain `finish_reason` result shapes.
 - `epicormic.window.observe`: records N samples of every probe in one
   pollard run using the D5 layout (window header, probe branch anchors,
   probe headers, sample branch anchors, model calls), in hybrid mode so

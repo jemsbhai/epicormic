@@ -34,6 +34,14 @@ _EXPORTS: dict[str, str] = {
     "read_window": "epicormic.observation",
     "Drift": "epicormic.mock",
     "MockProvider": "epicormic.mock",
+    "BUILTIN_SCORERS": "epicormic.scorers",
+    "DEFAULT_SCORER_NAMES": "epicormic.scorers",
+    "Reference": "epicormic.scorers",
+    "ScoreTable": "epicormic.scorers",
+    "Scorer": "epicormic.scorers",
+    "build_references": "epicormic.scorers",
+    "resolve_scorers": "epicormic.scorers",
+    "score_window": "epicormic.scorers",
 }
 
 __all__ = ["__version__", *sorted(_EXPORTS)]
@@ -51,6 +59,14 @@ if TYPE_CHECKING:
     from .panel import Probe as Probe
     from .panel import load_panel as load_panel
     from .panel import save_panel as save_panel
+    from .scorers import BUILTIN_SCORERS as BUILTIN_SCORERS
+    from .scorers import DEFAULT_SCORER_NAMES as DEFAULT_SCORER_NAMES
+    from .scorers import Reference as Reference
+    from .scorers import Scorer as Scorer
+    from .scorers import ScoreTable as ScoreTable
+    from .scorers import build_references as build_references
+    from .scorers import resolve_scorers as resolve_scorers
+    from .scorers import score_window as score_window
     from .window import WINDOW_FORMAT as WINDOW_FORMAT
     from .window import SampleEvent as SampleEvent
     from .window import WindowError as WindowError
