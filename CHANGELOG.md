@@ -6,24 +6,24 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
-### Documentation
-
-- README: accurate status by phase, and a credential-free example that
-  observes a baseline and a drifted window on `MockProvider` and runs the
-  stratified permutation test, with its recorded output.
-- docs/statistics.md: derivations of every Layer A test as implemented
-  (Fisher, Mann-Whitney with the exact counting recurrence and the
-  tie-corrected normal approximation, Cliff's delta, Hodges-Lehmann,
-  permutation and stratified permutation, Benjamini-Hochberg, Holm) and the
-  Layer B and opinion specifications, with references (three verified
-  against the publishers on 2026-09-27).
-- docs/PLAN.md: status by phase, D19 (header identity excludes the sample
-  count and version) and D20 (mock lives in the package), corrected example
-  payload numbers to what the decimal encoder emits, and the refusal
-  handling rule in section 6.
-
 ### Added
 
+- `epicormic.verdict`: `AnalysisConfig` (decimal-string parameters,
+  digested), `Monitor` (panel, pooled baseline windows, configuration,
+  monitor chain), `compute_verdict` (Layer A per probe and pooled with
+  Benjamini-Hochberg and Holm, Layer B over the recorded history, the
+  section 9 state rules, contract change detection with JSON pointer
+  paths, value-free decimal-encoded evidence with top-k truncation),
+  `record_verdict` (appends to the chain, refuses stale sequence indices,
+  patches the ledger index), `recompute_verdict` (re-derives a recorded
+  verdict over the chain prefix that preceded it and reports whether the
+  payload matches), and `analyze`.
+- `epicormic.opinion`: the Subjective Logic opinion from the averaged
+  e-value and the observations consumed, overflow-safe, matching the
+  worked example in docs/PLAN.md.
+- `epicormic.ledger`: `Ledger.state` and `Ledger.history`, index pointer
+  verified against the chain (existence, verdict format, last link,
+  descent from the monitor root) with the chain as fallback.
 - `epicormic.stats.sequential` (Layer B, pure Python): two-sided CUSUM and
   Page-Hinkley on per-window statistics, and the anytime-valid betting
   e-process for indicator streams (grid of stake fractions, log-space
@@ -81,6 +81,31 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   evidence numbers (`decimal_str`, `parse_decimal_str`, `encode_evidence`),
   six significant digits, half-even rounding, plain notation, non-finite
   values reported by path (D6).
+
+### Changed
+
+- The null rate of the sign-transformed e-process stream for scalar scorers
+  is the baseline's above-median rate among non-ties, not one half (D21):
+  with one half, a discrete score such as output length alarmed on nothing.
+- The opinion excludes scorers whose e-process stream carried no
+  observations from both the average and the minimum.
+
+### Documentation
+
+- README: accurate status by phase, and a credential-free example that
+  observes a baseline and a drifted window on `MockProvider` and runs the
+  stratified permutation test, with its recorded output.
+- docs/statistics.md: derivations of every Layer A test as implemented
+  (Fisher, Mann-Whitney with the exact counting recurrence and the
+  tie-corrected normal approximation, Cliff's delta, Hodges-Lehmann,
+  permutation and stratified permutation, Benjamini-Hochberg, Holm), Layer
+  B and the opinion as implemented including the D21 correction and the
+  absence of an effect-size floor in the e-process (D22), with references
+  (three verified against the publishers on 2026-09-27).
+- docs/PLAN.md: status by phase, D19 (header identity excludes the sample
+  count and version), D20 (mock lives in the package), D21, D22, corrected
+  example payload numbers to what the decimal encoder emits, the refusal
+  handling rule in section 6, and the limitation on operational scorers.
 
 ## [0.0.1] - 2026-09-27
 

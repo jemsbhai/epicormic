@@ -42,17 +42,31 @@ _EXPORTS: dict[str, str] = {
     "build_references": "epicormic.scorers",
     "resolve_scorers": "epicormic.scorers",
     "score_window": "epicormic.scorers",
+    "AnalysisConfig": "epicormic.verdict",
+    "Monitor": "epicormic.verdict",
+    "Verdict": "epicormic.verdict",
+    "VerdictError": "epicormic.verdict",
+    "analyze": "epicormic.verdict",
+    "compute_verdict": "epicormic.verdict",
+    "recompute_verdict": "epicormic.verdict",
+    "record_verdict": "epicormic.verdict",
+    "Opinion": "epicormic.opinion",
+    "Ledger": "epicormic.ledger",
+    "LedgerEntry": "epicormic.ledger",
 }
 
 __all__ = ["__version__", *sorted(_EXPORTS)]
 
 if TYPE_CHECKING:
+    from .ledger import Ledger as Ledger
+    from .ledger import LedgerEntry as LedgerEntry
     from .mock import Drift as Drift
     from .mock import MockProvider as MockProvider
     from .observation import Observation as Observation
     from .observation import WindowView as WindowView
     from .observation import find_window_headers as find_window_headers
     from .observation import read_window as read_window
+    from .opinion import Opinion as Opinion
     from .panel import PANEL_FORMAT as PANEL_FORMAT
     from .panel import Panel as Panel
     from .panel import PanelError as PanelError
@@ -67,6 +81,14 @@ if TYPE_CHECKING:
     from .scorers import build_references as build_references
     from .scorers import resolve_scorers as resolve_scorers
     from .scorers import score_window as score_window
+    from .verdict import AnalysisConfig as AnalysisConfig
+    from .verdict import Monitor as Monitor
+    from .verdict import Verdict as Verdict
+    from .verdict import VerdictError as VerdictError
+    from .verdict import analyze as analyze
+    from .verdict import compute_verdict as compute_verdict
+    from .verdict import recompute_verdict as recompute_verdict
+    from .verdict import record_verdict as record_verdict
     from .window import WINDOW_FORMAT as WINDOW_FORMAT
     from .window import SampleEvent as SampleEvent
     from .window import WindowError as WindowError

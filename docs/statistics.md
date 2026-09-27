@@ -1,9 +1,9 @@
 # Statistics
 
 This document derives every test epicormic runs and states what each
-guarantees. Layer A (window comparison) is implemented in `epicormic.stats`
-and tested against SciPy; Layer B (sequential monitoring) is specified here
-and in docs/PLAN.md section 8.2 and arrives with `epicormic.stats.sequential`.
+guarantees. Layer A (window comparison) and Layer B (sequential
+monitoring) are implemented in `epicormic.stats`; Layer A is tested
+against SciPy and Layer B against its own theoretical bounds.
 Symbols: `B` is the pooled baseline sample of one probe and scorer, `C` the
 current sample, `n_b` and `n_c` their sizes, `N = n_b + n_c`.
 
@@ -149,11 +149,12 @@ Benjamini-Hochberg on every input.
 Implementation: `epicormic.stats.multiplicity.benjamini_hochberg`, `holm`,
 `rejected`.
 
-## 7. Layer B: sequential monitoring (specified, not yet implemented)
+## 7. Layer B: sequential monitoring
 
-The monitor chain gives an ordered sequence of current windows compared
-against one pooled baseline. Two detectors run on the per-window pooled
-statistic and one runs on the per-observation stream.
+Implemented in `epicormic.stats.sequential` and driven from
+`epicormic.verdict`. The monitor chain gives an ordered sequence of current
+windows compared against one pooled baseline. Two detectors run on the
+per-window pooled statistic and one runs on the per-observation stream.
 
 CUSUM (Page, 1954), two-sided on `z_w = T_w` per scorer:
 
@@ -183,27 +184,41 @@ are inspected. This is the betting construction of Waudby-Smith and
 Ramdas (2024); the game-theoretic framing is surveyed by Ramdas, Grünwald,
 Vovk, and Shafer (2023). For scalar scorers the stream is the per-probe
 sign transform `x_i = 1[score_i > baseline median of that probe]` with
-ties excluded and counted, and `mu0 = 0.5`. Caveat: `mu0` for indicators
-is estimated from the baseline; the guarantee is exact only when the
-baseline is large relative to the current stream, and the verdict records
-the baseline sample count. A two-sample sequential test that removes the
-plug-in is the v0.2 research item.
+ties excluded and counted, and `mu0` is the baseline's own above-median
+rate among non-ties, pooled across probes and clipped away from 0 and 1.
+It equals one half only when the score distribution has no mass at the
+median: a discrete score such as output length on a mostly matching
+provider sits mostly at the median, and its non-ties are not split evenly
+around it, so a fixed null of one half would alarm on nothing. Caveat:
+`mu0` is estimated from the baseline in both the indicator and the scalar
+case; the guarantee is exact only when the baseline is large relative to
+the current stream, and the verdict records the baseline sample count. A
+two-sample sequential test that removes the plug-in is the v0.2 research
+item. A further property to state plainly: an anytime-valid test of a rate
+eventually detects any systematic shift, however small, so the e-process
+has no effect-size floor; the choice of scorers decides which shifts are
+worth detecting.
 
 The e-process state is recomputed from the store on every verdict, never
 cached, so a verdict is a pure function of the observations and the
 configuration.
 
-## 8. The opinion (specified, not yet implemented)
+## 8. The opinion
 
-Each verdict carries a Subjective Logic opinion `(b, d, u, a)` about the
-proposition that the provider has drifted on the panel, derived from the
-average two-sided e-value `E` across scorers and the number `m` of current
-observations the e-processes consumed: `P = E a / (E a + (1 - a))` reads
-the e-value as a conservative Bayes factor against the null, the
-e-posterior interpretation (Grünwald, 2023); `u = W / (m + W)` with the
-non-informative prior weight `W = 2`; `b = (1 - u) P`, `d = (1 - u)(1 -
-P)`. The opinion is a derived summary for downstream fusion and never an
-input to the state rules (docs/PLAN.md, section 10.1).
+Implemented in `epicormic.opinion`. Each verdict carries a Subjective Logic
+opinion `(b, d, u, a)` about the proposition that the provider has drifted
+on the panel, derived from the average two-sided e-value `E` across the
+scorers whose streams carried observations (a log-mean-exp, so it stays
+finite) and the smallest number `m` of observations any of those streams
+consumed: `P = E a / (E a + (1 - a))` reads the e-value as a conservative
+Bayes factor against the null, the e-posterior interpretation (Grünwald,
+2023), computed as a logistic of `log E + logit a` so overflow is
+impossible; `u = W / (m + W)` with the non-informative prior weight
+`W = 2`; `b = (1 - u) P`, `d = (1 - u)(1 - P)`. Scorers whose stream is
+empty (every score tied with the median) contribute no evidence and are
+excluded from both the average and the minimum. The opinion is a derived
+summary for downstream fusion and never an input to the state rules
+(docs/PLAN.md, section 10.1).
 
 ## References
 

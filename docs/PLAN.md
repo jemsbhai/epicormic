@@ -1,12 +1,11 @@
 # epicormic build plan
 
-Status: v0.1 specification, approved, under construction. Phases 0 to 3
-(scaffold, observation, scorers, Layer A statistics) are implemented and
-tested at 100 percent line coverage; 0.0.1 on PyPI is a name claim. Next:
-Phase 4 together with Phase 6 (verdict, opinion, ledger, sequential
-detectors), then Phase 5 (levers), Phase 7 (CLI, pytest plugin), Phase 8
-(0.1.0). Decisions D1 to D11 and D13 to D20 are approved; D12 is
-declined. Last updated 2026-09-27.
+Status: v0.1 specification, approved, under construction. Phases 0 to 4
+and 6 (scaffold, observation, scorers, Layer A and Layer B statistics,
+verdict, opinion, ledger) are implemented and tested at 100 percent line
+coverage; 0.0.1 on PyPI is a name claim. Next: Phase 5 (levers), Phase 7
+(CLI, pytest plugin), Phase 8 (0.1.0). Decisions D1 to D11 and D13 to D22
+are approved; D12 is declined. Last updated 2026-09-27.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -213,6 +212,24 @@ Approved 2026-09-27:
   The seeded mock provider is part of the package as `epicormic.mock`
   (`MockProvider`, `Drift`) rather than an example script, so the tests,
   the CLI's calibration command, and users share one implementation.
+- D21 (2026-09-27, correction found during Phase 4). The null rate of the
+  sign-transformed e-process stream for a scalar scorer is not one half. It
+  is the baseline's own above-median rate among non-ties (per-probe
+  medians, pooled across probes, clipped by `clipped_rate`), a plug-in
+  with the same caveat as the indicator case. One half holds only when the
+  score distribution has no mass at the median; a discrete score such as
+  output length on a mostly matching provider has most of its mass exactly
+  at the median, and with one half as the null the e-process alarmed on
+  nothing. Section 8.2 and docs/statistics.md section 7 are corrected.
+- D22 (2026-09-27, finding recorded during Phase 4). An anytime-valid test
+  of a rate eventually detects any systematic shift, however small; the
+  e-process therefore has no effect-size floor by design, and `effect_min`
+  applies to the per-probe warning rule only. Consequence: `latency_s`
+  stays in the default scorer set because latency drift is a real
+  operational signal for hosted providers, but on the mock provider its
+  microsecond timings shift systematically between runs, so tests,
+  examples, and the CLI's calibration use behavioural scorer sets on the
+  mock. Section 17 records the limitation.
 
 Declined:
 
@@ -609,11 +626,14 @@ two-sided e-value is `E_i = (K+_i + K-_i) / 2`. Alarm when
 under the null (mean `mu0`) is at most alpha, at any stopping time. For
 scalar scorers the stream is the per-probe sign transform
 `x_i = 1[score_i > baseline median of that probe]` with ties excluded and
-counted, and `mu0 = 0.5`. Documented caveat: `mu0` for indicators is an
-estimate from the baseline; the guarantee is exact only when the baseline
-is large relative to the current stream, and the verdict records the
-baseline sample count so the reader can judge. A two-sample sequential test
-that removes the plug-in is the v0.2 research item.
+counted, and `mu0` is the baseline's own above-median rate among non-ties,
+pooled across probes and clipped away from 0 and 1 (D21); it equals one
+half only when the score distribution has no mass at the median. Documented
+caveat: `mu0` is an estimate from the baseline in both cases; the guarantee
+is exact only when the baseline is large relative to the current stream,
+and the verdict records the baseline sample count so the reader can judge.
+A two-sample sequential test that removes the plug-in is the v0.2 research
+item.
 
 The e-process state (wealth per grid point per scorer, count of observations
 consumed) is recomputed from the store every time, never cached, so a
@@ -1076,6 +1096,10 @@ Publication decision follows the numbers, as with pollard.
 - Repeated windows against one fixed baseline make per-window statistics
   dependent; CUSUM and Page-Hinkley are heuristics here and are labelled as
   such; the e-process is the guaranteed detector.
+- The e-process has no effect-size floor: any systematic shift in a
+  monitored rate, however small, is eventually detected (D22). Operational
+  scorers such as latency therefore report real but possibly trivial
+  shifts; choose the scorer set for the question being asked.
 - Scorer code is caller-trusted and can leak values; built-ins do not.
 - Temperature 0 does not make hosted endpoints deterministic; the design
   does not rely on determinism anywhere.
@@ -1099,10 +1123,12 @@ commit; nothing is pushed without explicit approval.
 - Phase 3, Layer A statistics (done 2026-09-27): exact, rank, permutation,
   multiplicity, with the property tests in section 14 and SciPy
   cross-checks; derivations in docs/statistics.md.
-- Phase 4, verdict, evidence, ledger: `verdict.py`, `ledger.py`, value-free
-  scan, recompute check.
+- Phase 4, verdict, evidence, ledger (done 2026-09-27, together with
+  Phase 6): `opinion.py`, `verdict.py` (configuration, monitor, chain,
+  state rules, value-free evidence, recompute), `ledger.py`.
 - Phase 5, levers: `levers.py`, `docs/levers.md`, example 03.
-- Phase 6, Layer B statistics: `stats/sequential.py`, chained verdicts.
+- Phase 6, Layer B statistics (done 2026-09-27): `stats/sequential.py`,
+  chained verdicts.
 - Phase 7, CLI: all subcommands, exit codes, `calibrate`, example 04.
 - Phase 8, release: docs, README start with locked digest, installed-wheel
   smoke test, vocabulary scan, TestPyPI then PyPI 0.1.0, tag, GitHub
