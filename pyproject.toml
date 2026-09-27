@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "epicormic"
-version = "0.0.1"
+version = "0.1.0"
 description = "Provider drift detection and containment for pollard-governed AI systems."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -13,7 +13,7 @@ authors = [{name = "Muntaser Syed"}]
 maintainers = [{name = "Muntaser Syed", email = "jemsbhai@gmail.com"}]
 keywords = ["drift", "llm", "monitoring", "canary", "sequential-testing", "pollard", "audit"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "License :: OSI Approved :: MIT License",
