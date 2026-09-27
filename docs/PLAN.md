@@ -1,11 +1,11 @@
 # epicormic build plan
 
-Status: v0.1 specification, approved, under construction. Phases 0 to 4
-and 6 (scaffold, observation, scorers, Layer A and Layer B statistics,
-verdict, opinion, ledger) are implemented and tested at 100 percent line
-coverage; 0.0.1 on PyPI is a name claim. Next: Phase 5 (levers), Phase 7
-(CLI, pytest plugin), Phase 8 (0.1.0). Decisions D1 to D11 and D13 to D22
-are approved; D12 is declined. Last updated 2026-09-27.
+Status: v0.1 specification, approved, under construction. Phases 0 to 6
+(scaffold, observation, scorers, Layer A and Layer B statistics, verdict,
+opinion, ledger, levers) are implemented and tested at 100 percent line
+coverage; 0.0.1 on PyPI is a name claim. Next: Phase 7 (CLI, pytest
+plugin), Phase 8 (0.1.0). Decisions D1 to D11 and D13 to D22 are
+approved; D12 is declined. Last updated 2026-09-27.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -1126,7 +1126,9 @@ commit; nothing is pushed without explicit approval.
 - Phase 4, verdict, evidence, ledger (done 2026-09-27, together with
   Phase 6): `opinion.py`, `verdict.py` (configuration, monitor, chain,
   state rules, value-free evidence, recompute), `ledger.py`.
-- Phase 5, levers: `levers.py`, `docs/levers.md`, example 03.
+- Phase 5, levers (done 2026-09-27): `levers.py` (`DriftMeter`,
+  `DriftPolicy`, `ContractGate`), `docs/levers.md`; example 03 arrives with
+  the examples in Phase 8.
 - Phase 6, Layer B statistics (done 2026-09-27): `stats/sequential.py`,
   chained verdicts.
 - Phase 7, CLI: all subcommands, exit codes, `calibrate`, example 04.

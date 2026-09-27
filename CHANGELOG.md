@@ -8,6 +8,16 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.levers`: `DriftMeter` (a pollard meter that refuses dispatch
+  through `MeterPrecheckRefusal` while the monitor is in a listed state,
+  with audit metadata naming the verdict), `DriftPolicy` (a pollard policy
+  mapping the state to ALLOW, CONFIRM, or DENY for side-effectful tools),
+  and `ContractGate` (a meter refusing model calls bound to an unexpected
+  replay contract unless its digest is acknowledged, with the differing
+  JSON pointer paths). `epicormic.verdict.contract_digest` and
+  `difference_paths` are public for acknowledgement workflows.
+- docs/levers.md: the three levers with full `Runtime` construction
+  examples and the hybrid fallback recipe.
 - `epicormic.verdict`: `AnalysisConfig` (decimal-string parameters,
   digested), `Monitor` (panel, pooled baseline windows, configuration,
   monitor chain), `compute_verdict` (Layer A per probe and pooled with

@@ -53,6 +53,9 @@ _EXPORTS: dict[str, str] = {
     "Opinion": "epicormic.opinion",
     "Ledger": "epicormic.ledger",
     "LedgerEntry": "epicormic.ledger",
+    "ContractGate": "epicormic.levers",
+    "DriftMeter": "epicormic.levers",
+    "DriftPolicy": "epicormic.levers",
 }
 
 __all__ = ["__version__", *sorted(_EXPORTS)]
@@ -60,6 +63,9 @@ __all__ = ["__version__", *sorted(_EXPORTS)]
 if TYPE_CHECKING:
     from .ledger import Ledger as Ledger
     from .ledger import LedgerEntry as LedgerEntry
+    from .levers import ContractGate as ContractGate
+    from .levers import DriftMeter as DriftMeter
+    from .levers import DriftPolicy as DriftPolicy
     from .mock import Drift as Drift
     from .mock import MockProvider as MockProvider
     from .observation import Observation as Observation

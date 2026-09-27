@@ -53,10 +53,12 @@ MONITOR_FORMAT = "epicormic/monitor/v1"
 VERDICT_FORMAT = "epicormic/verdict/v1"
 CONFIG_DOMAIN = b"epicormic/config/v1\n"
 MONITOR_LABEL_PREFIX = "epicormic-monitor/"
+CONTRACT_DOMAIN = b"epicormic/contract/v1\n"
 STATES = ("stable", "warning", "drift", "unknown")
 
 __all__ = [
     "CONFIG_DOMAIN",
+    "CONTRACT_DOMAIN",
     "MONITOR_FORMAT",
     "STATES",
     "VERDICT_FORMAT",
@@ -66,6 +68,8 @@ __all__ = [
     "VerdictError",
     "analyze",
     "compute_verdict",
+    "contract_digest",
+    "difference_paths",
     "monitor_label",
     "read_chain",
     "recompute_verdict",
@@ -860,9 +864,20 @@ def _contract_change(
     return True, paths
 
 
-def _contract_digest(contract: Mapping[str, Any] | None) -> str:
+def contract_digest(contract: Mapping[str, Any] | None) -> str:
+    """Domain-separated digest of a replay contract document (``None`` for no contract)."""
+
     document: IdentityValue = dict(contract) if contract is not None else None
-    return domain_digest(b"epicormic/contract/v1\n", document)
+    return domain_digest(CONTRACT_DOMAIN, document)
+
+
+_contract_digest = contract_digest
+
+
+def difference_paths(left: Any, right: Any, prefix: str = "") -> list[str]:
+    """JSON pointer paths at which two documents differ; value-free."""
+
+    return _difference_paths(left, right, prefix)
 
 
 def _difference_paths(left: Any, right: Any, prefix: str) -> list[str]:
