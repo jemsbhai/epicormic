@@ -18,7 +18,7 @@ from typing import Any
 
 from ._canon import canonical_bytes
 
-__all__ = ["Drift", "MockProvider"]
+__all__ = ["Drift", "MockProvider", "step"]
 
 
 @dataclass(frozen=True)
@@ -110,3 +110,7 @@ def _identity_safe(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): _identity_safe(item) for key, item in value.items()}
     return repr(value)
+
+
+step = MockProvider()
+"""A ready-made mock step callable for ``--fn epicormic.mock:step`` and quick starts."""

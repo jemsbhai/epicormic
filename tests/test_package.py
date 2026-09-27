@@ -33,7 +33,7 @@ def test_pytest_plugin_module_imports_cleanly() -> None:
     import epicormic.pytest_plugin as plugin
 
     assert plugin.__doc__ is not None
-    assert not [name for name in dir(plugin) if name.startswith("pytest_")]
+    assert {"pytest_addoption", "pytest_configure", "pytest_pyfunc_call"} <= set(dir(plugin))
 
 
 def test_lazy_exports_resolve_and_unknown_names_fail() -> None:

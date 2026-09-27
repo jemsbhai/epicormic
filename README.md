@@ -14,7 +14,7 @@ release will be 0.1.0.
 
 ## What works today (from a checkout)
 
-Phases 0 to 3 of the plan are implemented and tested at 100 percent line
+Phases 0 to 7 of the plan are implemented and tested at 100 percent line
 coverage:
 
 - `Probe` and `Panel`: pinned canary requests with domain-separated
@@ -30,19 +30,37 @@ coverage:
   input tokens, latency, cost, energy) with references built from baseline
   windows, and finish-reason detection for the OpenAI Chat and Responses,
   Anthropic Messages, and Bedrock Converse result shapes.
-- Layer A statistics, pure Python and cross-checked against SciPy: Fisher's
-  exact test, Mann-Whitney U with Cliff's delta and the Hodges-Lehmann
-  shift, two-sample and stratified permutation tests, Benjamini-Hochberg
-  and Holm.
+- Statistics, pure Python: Fisher's exact test, Mann-Whitney U with
+  Cliff's delta and the Hodges-Lehmann shift, two-sample and stratified
+  permutation tests, Benjamini-Hochberg and Holm (cross-checked against
+  SciPy); CUSUM, Page-Hinkley, and the anytime-valid betting e-process
+  (checked against Ville's bound). Derivations in
+  [docs/statistics.md](docs/statistics.md).
+- Verdicts: `Monitor` and `AnalysisConfig`, the four states with their
+  ordered rules, value-free decimal-encoded evidence appended to a monitor
+  chain in the pollard store, contract change detection, a Subjective Logic
+  opinion, recomputation of any recorded verdict, and a `Ledger`.
+- Levers on pollard's fail-closed hooks: `DriftMeter`, `DriftPolicy`,
+  `ContractGate` ([docs/levers.md](docs/levers.md)).
+- The `epicormic` CLI (`panel`, `observe`, `verdict`, `calibrate`, `status`,
+  `report`, exit codes by state) and a pytest plugin with an
+  `epicormic_gate` marker ([docs/cli.md](docs/cli.md)).
 - `MockProvider`: a seeded, credential-free stand-in with injectable drift.
 
-Not yet implemented: verdicts and their value-free evidence notes, the
-Subjective Logic opinion, the ledger, the three levers (`DriftMeter`,
-`DriftPolicy`, `ContractGate`), sequential detectors, the CLI, and the
-pytest plugin. Until those exist the package detects nothing on its own;
-the pieces below have to be composed by hand.
+Not yet implemented: JSON-LD panel loading and verdict export through the
+`[jsonld]` extra, the runnable examples, and the installed-wheel smoke
+test; those close Phase 8 and 0.1.0.
 
 ## A credential-free example
+
+The shortest path is the CLI on the mock provider (three windows, the
+first as baseline, behavioural scorers):
+
+```
+epicormic calibrate --panel panel.json --store runs.db --fn epicormic.mock:step --samples 10 --windows 3 --config config.json
+```
+
+The Python API composes the same pieces by hand:
 
 ```python
 from pollard import MemoryStore

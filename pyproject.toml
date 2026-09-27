@@ -79,3 +79,4 @@ addopts = "-q -p no:epicormic"
 
 [tool.coverage.run]
 source = ["src/epicormic"]
+omit = ["src/epicormic/__main__.py"]

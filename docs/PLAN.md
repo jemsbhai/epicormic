@@ -1,11 +1,12 @@
 # epicormic build plan
 
-Status: v0.1 specification, approved, under construction. Phases 0 to 6
+Status: v0.1 specification, approved, under construction. Phases 0 to 7
 (scaffold, observation, scorers, Layer A and Layer B statistics, verdict,
-opinion, ledger, levers) are implemented and tested at 100 percent line
-coverage; 0.0.1 on PyPI is a name claim. Next: Phase 7 (CLI, pytest
-plugin), Phase 8 (0.1.0). Decisions D1 to D11 and D13 to D22 are
-approved; D12 is declined. Last updated 2026-09-27.
+opinion, ledger, levers, CLI, pytest plugin) are implemented and tested at
+100 percent line coverage; 0.0.1 on PyPI is a name claim. Next: Phase 8
+(JSON-LD extra, examples, docs, installed-wheel smoke test, 0.1.0).
+Decisions D1 to D11 and D13 to D22 are approved; D12 is declined. Last
+updated 2026-09-27.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -1131,10 +1132,13 @@ commit; nothing is pushed without explicit approval.
   the examples in Phase 8.
 - Phase 6, Layer B statistics (done 2026-09-27): `stats/sequential.py`,
   chained verdicts.
-- Phase 7, CLI: all subcommands, exit codes, `calibrate`, example 04.
-- Phase 8, release: docs, README start with locked digest, installed-wheel
-  smoke test, vocabulary scan, TestPyPI then PyPI 0.1.0, tag, GitHub
-  release.
+- Phase 7, CLI (done 2026-09-27): all subcommands, exit codes,
+  `calibrate`, `python -m epicormic`, the pytest plugin (D14), docs/cli.md;
+  the JSON-LD report format is wired but deferred to the `[jsonld]` extra.
+- Phase 8, release: `jsonld.py` (D13, D18), examples 01 to 04, remaining
+  docs (evidence-format, limitations), README start with locked digest,
+  installed-wheel smoke test, vocabulary scan, TestPyPI then PyPI 0.1.0,
+  tag, GitHub release.
 - Phase 9, experiments EXP-A to EXP-E and the paper, in a separate paper
   repository as with pollard-jev.
 

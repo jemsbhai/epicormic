@@ -8,6 +8,19 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.cli` and `python -m epicormic`: `panel digest`, `observe`
+  (hybrid, resumable, budgets, replay contract document), `verdict`
+  (records to the chain, `--recompute`), `calibrate` (A/A windows),
+  `status`, and `report` (JSON; JSON-LD wired for the `[jsonld]` extra),
+  with exit codes 0 stable, 2 warning, 3 drift, 4 unknown, 1 error. Step
+  callables come from `--fn module:attribute`; the CLI never constructs
+  provider clients. `epicormic.mock.step` is a ready-made mock callable.
+- pytest plugin (`pytest11` entry point): `--epicormic-store`,
+  `--epicormic-monitor`, `--epicormic-panel-digest`, `--epicormic-fail-on`,
+  the session-scoped `epicormic_state` fixture, and the `epicormic_gate`
+  marker that fails a test in its call phase when the monitor is in a
+  failing state.
+- docs/cli.md with a CI recipe.
 - `epicormic.levers`: `DriftMeter` (a pollard meter that refuses dispatch
   through `MeterPrecheckRefusal` while the monitor is in a listed state,
   with audit metadata naming the verdict), `DriftPolicy` (a pollard policy
