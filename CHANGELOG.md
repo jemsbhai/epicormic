@@ -60,6 +60,10 @@ First functional release: Phases 0 to 8 of docs/PLAN.md.
   ordinal sort after those with one, by `created_at` then id.
 - `find_window_root` is defined in `epicormic.window` (still exported from
   `epicormic.observation` and `epicormic`).
+- mypy no longer follows numpy (pytest and jsonld-ex import it; epicormic
+  does not use it): the numpy stubs shipped for Python 3.14 use the `type`
+  statement, which mypy rejects under the 3.10 grammar the project checks
+  with, and that failed the 3.14 CI jobs.
 
 ### Added in Phases 0 to 7
 
