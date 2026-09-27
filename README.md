@@ -6,8 +6,10 @@ Epicormic shoots sprout from dormant buds after a tree is pollarded: growth
 that reappears after the cut. epicormic watches for model behaviour that
 reappears, or changes, after a baseline has been pinned.
 
-Status: pre-release, under construction. The specification is
-[docs/PLAN.md](docs/PLAN.md); nothing below it is implemented yet.
+Status: pre-release, under construction. The 0.0.1 release on PyPI is a
+name claim: it installs and reports its version and nothing more. The
+specification is [docs/PLAN.md](docs/PLAN.md), and the first functional
+release will be 0.1.0.
 
 ## What it will do
 
@@ -30,7 +32,11 @@ consequence, records evidence, and contains the effect.
 
 ## Installation
 
-Not yet published. Development install:
+```
+python -m pip install epicormic
+```
+
+Development install from a checkout:
 
 ```
 python -m pip install -e ".[dev]"
