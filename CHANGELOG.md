@@ -8,6 +8,16 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.stats` (Layer A, pure Python): Fisher's exact test with risk
+  difference and Haldane log odds ratio; Mann-Whitney U with an exact null
+  distribution for untied samples up to 20 per side and the tie-corrected
+  normal approximation otherwise, plus Cliff's delta and the Hodges-Lehmann
+  shift; two-sample permutation tests (exact enumeration up to 20,000
+  assignments, seeded Monte Carlo beyond); the stratified permutation test
+  on mean per-probe Cliff's delta, permuting within probes through rank
+  shuffling; Benjamini-Hochberg and Holm adjustments. Cross-checked against
+  SciPy to 1e-10 over random inputs, with null calibration, power, and
+  stratification tests.
 - `epicormic.scorers`: the `Scorer` protocol, twelve built-in value-free
   scorers (`normalized_match`, `exact_match`, `tool_call_set_jaccard`,
   `tool_call_count`, `refusal`, `truncated`, `output_chars`,
