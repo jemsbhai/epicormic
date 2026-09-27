@@ -91,10 +91,16 @@ epicormic report --store runs.db --monitor weekly --out report.json [--panel PAN
 ```
 
 `status` prints the latest ledger entry and exits with its state's code.
-`report` writes a JSON document with the latest verdict payload and the
-chain history; `--format jsonld` and `--prov-o` need the `[jsonld]` extra
-and arrive with it. Pass `--panel` when the same monitor id exists for
-several panels.
+`report` writes a JSON document (`epicormic/report/v1`) with the latest
+verdict payload and the chain history. With the `[jsonld]` extra,
+`--format jsonld` writes a JSON-LD `Report` document under the epicormic
+vocabulary whose `latest` entry is the verdict as a JSON-LD document with
+jsonld-ex provenance annotations and an integrity digest
+(`epicormic.jsonld.verify_verdict_jsonld` checks it), and `--prov-o`
+writes the PROV-O graph of that verdict document instead; `--prov-o`
+without `--format jsonld`, or either without the extra installed, exits 1.
+Pass `--panel` when the same monitor id exists for several panels. The
+record formats are listed in docs/evidence-format.md.
 
 ## A CI recipe
 

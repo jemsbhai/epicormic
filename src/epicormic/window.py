@@ -12,9 +12,12 @@ One window is one pollard run. Its layout (docs/PLAN.md, section 6, D5):
 
 The header identity commits to the panel digest, the window id, the
 declared replay contract, and the sampling configuration, and to nothing
-that may legitimately change between reruns: the requested sample count
-and the epicormic version live in the header's metadata. Observation runs
-in pollard's hybrid mode, so a rerun serves every sample that already
+that may legitimately change between reruns: the requested sample count,
+the epicormic version, and the header's ordinal among the window's headers
+live in the header's metadata. A window gains a second header only when
+the declared contract changes; the ordinal records creation order, because
+pollard stores list children by kind and id, not by creation. Observation
+runs in pollard's hybrid mode, so a rerun serves every sample that already
 exists and dispatches only the missing ones.
 """
 
@@ -24,7 +27,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
-from pollard import Budget, BudgetExceeded, ReplayContract, Runtime
+from pollard import Budget, BudgetExceeded, Node, NodeKind, ReplayContract, Runtime
 from pollard.replay import ReplayMode
 from pollard.store import Store
 
@@ -48,6 +51,7 @@ __all__ = [
     "SampleEvent",
     "WindowError",
     "WindowReport",
+    "find_window_root",
     "header_payload",
     "observe",
     "window_label",
@@ -132,6 +136,34 @@ def window_label(panel_digest: str, window_id: str) -> str:
     return f"{LABEL_PREFIX}{panel_digest[:16]}/{window_id}"
 
 
+def find_window_root(panel_digest: str, window_id: str) -> str:
+    """The root node id of a window, computed from the label alone."""
+
+    label = window_label(panel_digest, window_id)
+    return Node.make(kind=NodeKind.ROOT, parent=None, payload={"run": label}).id
+
+
+def header_index_of(store: Store, header_id: str) -> int | None:
+    """The creation ordinal recorded in a window header's metadata, if any."""
+
+    meta = store.get(header_id).meta.get("epicormic")
+    index = meta.get("header_index") if isinstance(meta, dict) else None
+    return index if isinstance(index, int) and not isinstance(index, bool) else None
+
+
+def _next_header_index(store: Store, root_id: str, header_id: str) -> int:
+    """The number of other window headers under the root: the new header's ordinal."""
+
+    others = 0
+    for child_id in store.children(root_id):
+        if child_id == header_id:
+            continue
+        child = store.get(child_id)
+        if child.kind == NodeKind.NOTE.value and child.payload.get("format") == WINDOW_FORMAT:
+            others += 1
+    return others
+
+
 def header_payload(
     panel: Panel, window_id: str, contract: ReplayContract | None
 ) -> dict[str, IdentityValue]:
@@ -195,9 +227,18 @@ def observe(
 
     with runtime.run(label, budget=budget) as run:
         header = run.note(payload)
+        header_index = header_index_of(runtime.store, header.id)
+        if header_index is None:
+            header_index = _next_header_index(runtime.store, run.root_id, header.id)
         runtime.store.update_meta(
             header.id,
-            {"epicormic": {"samples_requested": samples, "epicormic_version": __version__}},
+            {
+                "epicormic": {
+                    "samples_requested": samples,
+                    "epicormic_version": __version__,
+                    "header_index": header_index,
+                }
+            },
         )
         for index, probe in enumerate(panel.probes):
             with run.branch(attempt=index, budget=probe_budget) as probe_run:

@@ -1,12 +1,13 @@
 # epicormic build plan
 
-Status: v0.1 specification, approved, under construction. Phases 0 to 7
+Status: v0.1 specification, approved, implemented. Phases 0 to 8
 (scaffold, observation, scorers, Layer A and Layer B statistics, verdict,
-opinion, ledger, levers, CLI, pytest plugin) are implemented and tested at
-100 percent line coverage; 0.0.1 on PyPI is a name claim. Next: Phase 8
-(JSON-LD extra, examples, docs, installed-wheel smoke test, 0.1.0).
-Decisions D1 to D11 and D13 to D22 are approved; D12 is declined. Last
-updated 2026-09-27.
+opinion, ledger, levers, CLI, pytest plugin, JSON-LD extra, examples,
+documentation set, installed-wheel smoke test) are done and tested at 100
+percent line coverage; 0.1.0 is the first functional release. Next: Phase
+9 (experiments and the paper) in a separate repository. Decisions D1 to
+D11 and D13 to D23 are approved; D12 is declined. Last updated
+2026-09-27.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -231,6 +232,18 @@ Approved 2026-09-27:
   microsecond timings shift systematically between runs, so tests,
   examples, and the CLI's calibration use behavioural scorer sets on the
   mock. Section 17 records the limitation.
+- D23 (2026-09-27, made during Phase 8 release checks). Every pollard
+  store lists a node's children by kind and id, never by creation, so the
+  order of a window's headers (several exist only after a contract change)
+  cannot be read from the tree, and `created_at` ties whenever two
+  observes fall inside the platform clock's resolution (the release suite
+  did on Windows). Each header therefore records its creation ordinal in
+  its metadata (`meta["epicormic"]["header_index"]`, not identity, as in
+  D19), assigned as the count of headers already under the root, kept on
+  reruns, and `find_window_headers` orders by it; headers without one sort
+  last by `created_at` then id. The verdict judges the last header, so the
+  ordinal is what makes the current window of a changed contract
+  well-defined.
 
 Declined:
 
@@ -472,8 +485,11 @@ Rules:
 - Model calls are made with `keep_chunks=False`; streaming is not used.
 - The window header note is written first, in `record` semantics that
   hybrid mode preserves (an existing header is served, a missing one is
-  written); its metadata then receives the requested sample count and the
-  epicormic version (D19).
+  written); its metadata then receives the requested sample count, the
+  epicormic version (D19), and the header's creation ordinal
+  (`header_index`, D23). A window gains a second header only when the
+  declared contract changes, and `find_window_headers` orders headers by
+  the ordinal.
 - A sample refused by a budget or meter leaves a refusal node under its
   sample anchor; the remaining samples of that probe are not attempted and
   observation continues with the next probe, so a window-level exhaustion
@@ -783,31 +799,49 @@ beyond what the e-posterior reading guarantees.
 ### 10.2 JSON-LD verdict export (D18)
 
 With the `[jsonld]` extra, `epicormic report --format jsonld` and
-`epicormic.jsonld.export_verdict` emit a verdict as a JSON-LD document:
+`epicormic.jsonld.verdict_to_jsonld` (alias `export_verdict`) emit a
+verdict as a JSON-LD document (implemented 2026-09-27 as described here;
+deviations from the first draft of this section are marked):
 
 - `@context` maps the epicormic vocabulary (the verdict fields of this
-  section) to IRIs under the epicormic namespace and includes the jsonld-ex
-  context.
+  section) to IRIs under the epicormic namespace `urn:epicormic:vocab:`
+  and names the jsonld-ex and PROV namespaces. A `context_integrity`
+  field carries the jsonld-ex digest of that context for pinning.
 - The body is the verdict payload, unchanged, with `@id` set to the verdict
-  node id as a URN (`urn:pollard:node:<id>`) and links to the monitor root,
-  baseline roots, and current root as URNs of the same form.
-- jsonld-ex annotations: `@source` = `epicormic/<version>`, `@method` = the
-  pooled test name plus the detector names, `@extractedAt` = the verdict
-  note's `created_at`, `@humanVerified` = false, and the opinion expressed
-  through `Opinion.to_jsonld()` built from the stored decimal components
-  (parsed to floats only inside the export path).
-- An integrity digest computed with jsonld-ex `compute_integrity` (SHA-256)
-  over the document without the digest field, so a reader can
-  `verify_integrity` before trusting it. The export is derived evidence:
-  the committed record is the pollard note, and the export cites it.
-- The export passes the same value-free scan as the note.
+  node id as a URN (`urn:pollard:node:<id>`) and the baseline roots and
+  current root linked as `baseline_root_nodes` and `current_root_node`,
+  URNs of the same form. The monitor root is not linked, because the
+  verdict payload does not carry it; the verdict node's parent chain in the
+  store leads to it.
+- jsonld-ex annotations on `state`: `@source` = `urn:pypi:epicormic:<version>`
+  (a URN rather than the relative form `epicormic/<version>` first written
+  here, because the annotation source becomes the PROV-O agent's `@id`),
+  `@method` = the pooled test name plus the per-probe test names and the
+  detector names, `@extractedAt` = the verdict note's `created_at`,
+  `@humanVerified` = false, `@confidence` = the opinion's projected
+  probability. The opinion is expressed through jsonld-ex
+  `Opinion.to_jsonld()` beside the recorded decimal components, with
+  uncertainty re-derived as 1 - belief - disbelief because jsonld-ex
+  requires exact additivity and the recorded strings are rounded (parsed to
+  floats only inside the export path).
+- An `integrity` digest computed with jsonld-ex `compute_integrity`
+  (SHA-256) over the document without that field;
+  `epicormic.jsonld.verify_verdict_jsonld` checks it before a reader trusts
+  the document. The export is derived evidence: the committed record is
+  the pollard note, and the export cites it.
+- The export passes the same value-free scan as the note, and a jsonld-ex
+  shape (`VERDICT_SHAPE`) validates it.
 
-Fusion recipes ship as examples, not core behaviour: cumulative fusion of
-opinions from independent monitors on the same provider (different
-panels), averaging fusion across consecutive windows of one monitor, and
-trust discounting of a monitor's opinion by an operator-declared trust
-opinion in its scorer set, all through jsonld-ex operators. PROV-O output
-through jsonld-ex `to_prov_o` is an option of `report`.
+Inbound, the same module loads a panel written as a JSON-LD document
+(`panel_from_jsonld`, `load_panel_jsonld`, shape-validated; stripping the
+JSON-LD keywords yields the plain document, so the digest is the same).
+
+Fusion ships as one function rather than as examples: `fuse_opinions`
+applies jsonld-ex cumulative fusion (independent monitors on the same
+provider, different panels) or averaging fusion (consecutive windows of one
+monitor) to verdict opinions. Trust discounting by an operator-declared
+trust opinion is not implemented in 0.1. PROV-O output through jsonld-ex
+`to_prov_o` is the `--prov-o` option of `report`.
 
 ## 11. Ledger and levers
 
@@ -1135,15 +1169,16 @@ commit; nothing is pushed without explicit approval.
 - Phase 7, CLI (done 2026-09-27): all subcommands, exit codes,
   `calibrate`, `python -m epicormic`, the pytest plugin (D14), docs/cli.md;
   the JSON-LD report format is wired but deferred to the `[jsonld]` extra.
-- Phase 8, release: `jsonld.py` (D13, D18), examples 01 to 04, remaining
-  docs (evidence-format, limitations), README start with locked digest,
-  installed-wheel smoke test, vocabulary scan, TestPyPI then PyPI 0.1.0,
-  tag, GitHub release.
+- Phase 8, release (done 2026-09-27): `jsonld.py` (D13, D18), examples 01
+  to 04 with tests/test_examples.py, docs/evidence-format.md,
+  docs/limitations.md, README start with locked digest, installed-wheel
+  smoke test in CI, vocabulary scan, 0.1.0 (TestPyPI, PyPI, tag, GitHub
+  release).
 - Phase 9, experiments EXP-A to EXP-E and the paper, in a separate paper
   repository as with pollard-jev.
 
 ## 19. Open questions for Muntaser
 
-None open as of 2026-09-27. The next step is Phase 0 (scaffold) in
-section 18. Questions raised during the build are appended here with a
-date and answered in the decision log.
+None open as of 2026-09-27. Phases 0 to 8 are done; the next step is
+Phase 9 (section 16, in a separate repository). Questions raised during
+the build are appended here with a date and answered in the decision log.

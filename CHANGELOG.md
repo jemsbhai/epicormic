@@ -6,7 +6,62 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-09-27
+
+First functional release: Phases 0 to 8 of docs/PLAN.md.
+
 ### Added
+
+- `epicormic.jsonld` (the `[jsonld]` extra, D13 and D18): panels as
+  JSON-LD documents under the epicormic vocabulary (`panel_to_jsonld`,
+  `panel_from_jsonld`, `load_panel_jsonld`, shape-validated with jsonld-ex,
+  same digest as the plain document); verdict export (`verdict_to_jsonld`,
+  alias `export_verdict`) with the verdict node and the window roots linked
+  as `urn:pollard:node:` URNs, the state annotated with confidence, source,
+  method, extraction time and `@humanVerified` false, a jsonld-ex `Opinion`
+  beside the recorded opinion, and an integrity digest checked by
+  `verify_verdict_jsonld`; `validate_verdict_jsonld`; PROV-O output
+  (`verdict_to_prov_o`); cumulative and averaging fusion of verdict
+  opinions (`fuse_opinions`). Importing the module without the extra raises
+  `ImportError` naming it.
+- `epicormic report --format jsonld` writes a JSON-LD `Report` document
+  whose `latest` entry is the exported verdict; `--prov-o` writes its
+  PROV-O graph. Both exit 1 without the extra.
+- `examples/01_observe.py`, `02_verdict.py`, `03_levers.py`, `04_cli.py`:
+  credential-free walkthroughs on the mock provider, run by
+  `tests/test_examples.py`.
+- CI: an installed-wheel smoke job that builds the sdist and wheel,
+  installs the wheel into a clean environment, and checks the import, the
+  console script, the pytest plugin entry point, and an example.
+
+### Documentation
+
+- docs/evidence-format.md: every record epicormic writes, field by field
+  (panel document, window root and header, probe marker, observation,
+  monitor root and header, verdict, opinion, lever refusals, report).
+- docs/limitations.md: what a verdict is not, what is not measured, the
+  statistical caveats, and the operational limits.
+- README: the ninety-second start on the mock with locked output, the drift
+  definition, the four states, the levers, the relation to pollard's
+  `revalidate_model_call`, and the extras.
+- docs/PLAN.md: Phase 8 done; section 10.2 records the implemented names
+  and the `@source` URN.
+
+### Changed
+
+- Version 0.1.0; development status Alpha.
+- Window headers record their creation ordinal (`epicormic.header_index`
+  in the header's metadata, never in its identity), and
+  `find_window_headers` orders by it. It ordered by `created_at` before,
+  which is arbitrary whenever two headers share a timestamp, since every
+  pollard store lists children by kind and id; on Windows, whose clock is
+  coarse enough for two observes to collide, the verdict could judge the
+  wrong header of a window whose contract had changed. Headers without an
+  ordinal sort after those with one, by `created_at` then id.
+- `find_window_root` is defined in `epicormic.window` (still exported from
+  `epicormic.observation` and `epicormic`).
+
+### Added in Phases 0 to 7
 
 - `epicormic.cli` and `python -m epicormic`: `panel digest`, `observe`
   (hybrid, resumable, budgets, replay contract document), `verdict`
@@ -105,7 +160,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
   six significant digits, half-even rounding, plain notation, non-finite
   values reported by path (D6).
 
-### Changed
+### Changed in Phases 0 to 7
 
 - The null rate of the sign-transformed e-process stream for scalar scorers
   is the baseline's above-median rate among non-ties, not one half (D21):
@@ -113,7 +168,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - The opinion excludes scorers whose e-process stream carried no
   observations from both the average and the minimum.
 
-### Documentation
+### Documentation in Phases 0 to 7
 
 - README: accurate status by phase, and a credential-free example that
   observes a baseline and a drifted window on `MockProvider` and runs the

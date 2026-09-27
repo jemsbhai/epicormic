@@ -397,7 +397,66 @@ def test_window_and_verdict_argument_errors(workspace: dict[str, str]) -> None:
     assert code == 1 and "monitor_id" in err
 
 
-def test_jsonld_export_is_deferred(workspace: dict[str, str]) -> None:
+def test_jsonld_and_prov_o_reports(
+    workspace: dict[str, str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pytest.importorskip("jsonld_ex")
+    observe(workspace, "base", "epicormic.mock:step")
+    observe(workspace, "cur", "drifted:step")
+    run(
+        "verdict",
+        "--store",
+        workspace["store"],
+        "--monitor",
+        "m",
+        "--panel",
+        workspace["panel"],
+        "--baseline",
+        "base",
+        "--current",
+        "cur",
+        "--config",
+        "config.json",
+    )
+    code, out, _ = run(
+        "report",
+        "--store",
+        workspace["store"],
+        "--monitor",
+        "m",
+        "--out",
+        "r.jsonld",
+        "--format",
+        "jsonld",
+    )
+    assert code == EXIT_CODES["drift"] and "wrote r.jsonld" in out
+    document = json.loads(Path("r.jsonld").read_text(encoding="utf-8"))
+    assert document["@type"] == "Report" and document["latest"]["@type"] == "Verdict"
+    assert document["latest"]["state"]["@value"] == "drift"
+    assert document["context_integrity"].startswith("sha256-")
+    code, _, _ = run(
+        "report",
+        "--store",
+        workspace["store"],
+        "--monitor",
+        "m",
+        "--out",
+        "r.prov.jsonld",
+        "--format",
+        "jsonld",
+        "--prov-o",
+    )
+    assert code == EXIT_CODES["drift"]
+    graph = json.loads(Path("r.prov.jsonld").read_text(encoding="utf-8"))
+    assert "@graph" in graph and graph["@context"]["prov"] == "http://www.w3.org/ns/prov#"
+    code, _, err = run(
+        "report", "--store", workspace["store"], "--monitor", "m", "--out", "x.json", "--prov-o"
+    )
+    assert code == 1 and "--prov-o requires --format jsonld" in err
+    import epicormic
+
+    monkeypatch.delattr(epicormic, "jsonld", raising=False)
+    monkeypatch.setitem(sys.modules, "epicormic.jsonld", None)
     code, _, err = run(
         "report",
         "--store",
@@ -405,15 +464,11 @@ def test_jsonld_export_is_deferred(workspace: dict[str, str]) -> None:
         "--monitor",
         "m",
         "--out",
-        "r.json",
+        "r2.jsonld",
         "--format",
         "jsonld",
     )
-    assert code == 1 and "[jsonld] extra" in err
-    code, _, err = run(
-        "report", "--store", workspace["store"], "--monitor", "m", "--out", "r.json", "--prov-o"
-    )
-    assert code == 1 and "[jsonld] extra" in err
+    assert code == 1 and "epicormic.jsonld" in err
 
 
 def test_module_entry_point_and_version() -> None:

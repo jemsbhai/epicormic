@@ -270,8 +270,8 @@ def cmd_status(args: argparse.Namespace, out: Any) -> int:
 
 def cmd_report(args: argparse.Namespace, out: Any) -> int:
     panel_digest = _load_panel(args.panel).digest if args.panel else None
-    if args.format == "jsonld" or args.prov_o:
-        raise CliError("JSON-LD and PROV-O export require the [jsonld] extra (0.1.0)")
+    if args.prov_o and args.format != "jsonld":
+        raise CliError("--prov-o requires --format jsonld")
     try:
         with SQLiteStore(Path(args.store)) as store:
             ledger = Ledger(store)
@@ -279,11 +279,12 @@ def cmd_report(args: argparse.Namespace, out: Any) -> int:
             if not history:
                 raise CliError(f"monitor {args.monitor!r} has no verdict")
             latest = store.get(history[-1].verdict_node_id)
-            document = {
+            created_at = latest.meta.get("created_at")
+            document: dict[str, Any] = {
                 "format": "epicormic/report/v1",
                 "monitor_id": args.monitor,
                 "latest": dict(latest.payload),
-                "latest_created_at": latest.meta.get("created_at"),
+                "latest_created_at": created_at,
                 "history": [
                     {
                         "sequence_index": entry.sequence_index,
@@ -297,6 +298,8 @@ def cmd_report(args: argparse.Namespace, out: Any) -> int:
             }
     except LedgerError as error:
         raise CliError(str(error)) from error
+    if args.format == "jsonld":
+        document = _jsonld_report(document, latest.id, created_at, prov_o=args.prov_o)
     Path(args.out).write_text(
         json.dumps(document, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
         encoding="utf-8",
@@ -304,6 +307,34 @@ def cmd_report(args: argparse.Namespace, out: Any) -> int:
     print(f"wrote {args.out}", file=out)
     _print_entry(history[-1], out)
     return _exit_for(history[-1].state)
+
+
+def _jsonld_report(
+    document: dict[str, Any], node_id: str, created_at: Any, *, prov_o: bool
+) -> dict[str, Any]:
+    try:
+        from . import jsonld
+    except ImportError as error:
+        raise CliError(str(error)) from error
+    verdict = jsonld.verdict_to_jsonld(
+        document["latest"],
+        node_id=node_id,
+        created_at=str(created_at) if created_at is not None else None,
+    )
+    problems = jsonld.validate_verdict_jsonld(verdict)
+    if problems:  # pragma: no cover - the exporter and the shape agree by construction
+        raise CliError(f"verdict document failed shape validation: {problems}")
+    if prov_o:
+        return jsonld.verdict_to_prov_o(verdict)
+    return {
+        "@context": dict(jsonld.EPICORMIC_CONTEXT),
+        "@type": "Report",
+        "format": "epicormic/report/v1",
+        "monitor_id": document["monitor_id"],
+        "latest": verdict,
+        "history": document["history"],
+        "context_integrity": jsonld.context_integrity(),
+    }
 
 
 # --- parser -----------------------------------------------------------------------

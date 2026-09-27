@@ -15,7 +15,7 @@ from typing import Any
 from pollard import Node, NodeKind
 from pollard.store import Store
 
-from .window import PROBE_HEADER_FORMAT, WINDOW_FORMAT, window_label
+from .window import PROBE_HEADER_FORMAT, WINDOW_FORMAT, find_window_root
 
 __all__ = [
     "Observation",
@@ -75,15 +75,21 @@ class WindowView:
         raise KeyError(probe_id)
 
 
-def find_window_root(panel_digest: str, window_id: str) -> str:
-    """The root node id of a window, computed from the label alone."""
-
-    label = window_label(panel_digest, window_id)
-    return Node.make(kind=NodeKind.ROOT, parent=None, payload={"run": label}).id
+def _header_order(node: Node) -> tuple[int, int, str, str]:
+    meta = node.meta.get("epicormic")
+    index = meta.get("header_index") if isinstance(meta, dict) else None
+    if isinstance(index, int) and not isinstance(index, bool):
+        return (0, index, str(node.meta.get("created_at", "")), node.id)
+    return (1, 0, str(node.meta.get("created_at", "")), node.id)
 
 
 def find_window_headers(store: Store, panel_digest: str, window_id: str) -> list[str]:
-    """Header note ids of a window, oldest first; several exist only if the contract changed."""
+    """Header note ids of a window, oldest first; several exist only if the contract changed.
+
+    Order follows the creation ordinal each header carries in its metadata
+    (pollard stores list children by kind and id, never by creation);
+    headers without one sort after those with one, by ``created_at`` then id.
+    """
 
     root_id = find_window_root(panel_digest, window_id)
     if not store.exists(root_id):
@@ -93,7 +99,7 @@ def find_window_headers(store: Store, panel_digest: str, window_id: str) -> list
         for node in (store.get(child) for child in store.children(root_id))
         if node.kind == NodeKind.NOTE.value and node.payload.get("format") == WINDOW_FORMAT
     ]
-    headers.sort(key=lambda node: str(node.meta.get("created_at", "")))
+    headers.sort(key=_header_order)
     return [node.id for node in headers]
 
 

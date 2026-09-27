@@ -16,6 +16,7 @@ from epicormic.window import (
     WINDOW_FORMAT,
     SampleEvent,
     WindowError,
+    header_index_of,
     header_payload,
     observe,
     window_label,
@@ -207,6 +208,95 @@ def test_contract_change_creates_a_second_header_under_the_same_root(
     assert second.dispatched == 6
     headers = find_window_headers(store, panel.digest, "w4")
     assert headers == [first.header_id, second.header_id]
+    assert [header_index_of(store, h) for h in headers] == [0, 1]
+
+
+def test_header_order_survives_identical_timestamps(
+    panel: Panel, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Stores list children by kind and id, so the header ordinal must carry creation order."""
+
+    import pollard.runtime
+
+    monkeypatch.setattr(pollard.runtime, "_now_utc", lambda: "2026-09-27T00:00:00.000000Z")
+    for trial in range(4):
+        store = MemoryStore()
+        created = [
+            observe(
+                panel,
+                window_id=f"tie{trial}",
+                samples=1,
+                fn=MockProvider(seed=1),
+                store=store,
+                contract=ReplayContract(provider="mock", model_revision=revision),
+            ).header_id
+            for revision in ("v1", "v2", "v3", "v4")
+        ]
+        assert find_window_headers(store, panel.digest, f"tie{trial}") == created
+        assert [header_index_of(store, h) for h in created] == [0, 1, 2, 3]
+        # a rerun under an earlier contract serves that header and keeps its ordinal
+        again = observe(
+            panel,
+            window_id=f"tie{trial}",
+            samples=2,
+            fn=MockProvider(seed=1),
+            store=store,
+            contract=ReplayContract(provider="mock", model_revision="v2"),
+        )
+        assert again.header_id == created[1]
+        assert header_index_of(store, created[1]) == 1
+        assert store.get(created[1]).meta["epicormic"]["samples_requested"] == 2
+        assert find_window_headers(store, panel.digest, f"tie{trial}") == created
+
+
+def test_headers_without_an_ordinal_sort_last_by_created_at_then_id(
+    panel: Panel, mock: MockProvider
+) -> None:
+    store = MemoryStore()
+    first = observe(
+        panel,
+        window_id="legacy",
+        samples=1,
+        fn=mock,
+        store=store,
+        contract=ReplayContract(provider="mock", model_revision="v1"),
+    ).header_id
+    second = observe(
+        panel,
+        window_id="legacy",
+        samples=1,
+        fn=mock,
+        store=store,
+        contract=ReplayContract(provider="mock", model_revision="v2"),
+    ).header_id
+    third = observe(
+        panel,
+        window_id="legacy",
+        samples=1,
+        fn=mock,
+        store=store,
+        contract=ReplayContract(provider="mock", model_revision="v3"),
+    ).header_id
+    # strip the ordinal from two headers and give them explicit, reversed timestamps
+    store.update_meta(first, {"created_at": "2026-09-27T00:00:02Z", "epicormic": {}})
+    store.update_meta(second, {"created_at": "2026-09-27T00:00:01Z", "epicormic": {}})
+    assert header_index_of(store, first) is None
+    assert find_window_headers(store, panel.digest, "legacy") == [third, second, first]
+    # identical timestamps fall back to the id
+    store.update_meta(first, {"created_at": "2026-09-27T00:00:01Z"})
+    assert find_window_headers(store, panel.digest, "legacy") == [third, *sorted([first, second])]
+    # a rerun of a header without an ordinal assigns the next one
+    store.update_meta(third, {"epicormic": {}})
+    again = observe(
+        panel,
+        window_id="legacy",
+        samples=1,
+        fn=mock,
+        store=store,
+        contract=ReplayContract(provider="mock", model_revision="v1"),
+    )
+    assert again.header_id == first and header_index_of(store, first) == 2
+    assert find_window_headers(store, panel.digest, "legacy")[0] == first
 
 
 def test_runtime_argument_must_be_hybrid_and_exclusive(panel: Panel, mock: MockProvider) -> None:
