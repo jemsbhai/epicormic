@@ -24,6 +24,14 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.stats.sequential` (Layer B, pure Python): two-sided CUSUM and
+  Page-Hinkley on per-window statistics, and the anytime-valid betting
+  e-process for indicator streams (grid of stake fractions, log-space
+  wealth, finite `log_e_value` when the e-value overflows, first-crossing
+  alarm index), with `sign_transform` for scalar scorers and
+  `clipped_rate` for degenerate baseline rates. Tests check Ville's bound
+  on 1,200 seeded null streams, detection delay under a rate shift, and
+  agreement with the direct product on short streams.
 - `epicormic.stats` (Layer A, pure Python): Fisher's exact test with risk
   difference and Haldane log odds ratio; Mann-Whitney U with an exact null
   distribution for untied samples up to 20 per side and the tie-corrected
