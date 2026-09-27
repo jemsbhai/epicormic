@@ -6,6 +6,11 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Documentation
+
+- README links to the docs are absolute GitHub URLs, so they resolve on
+  the PyPI project page as well as on GitHub.
+
 ## [0.1.0] - 2026-09-27
 
 First functional release: Phases 0 to 8 of docs/PLAN.md.

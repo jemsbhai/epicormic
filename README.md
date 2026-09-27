@@ -7,12 +7,17 @@ that reappears after the cut. epicormic watches for model behaviour that
 reappears, or changes, after a baseline has been pinned.
 
 Status: 0.1.0, the first functional release. The specification is
-[docs/PLAN.md](docs/PLAN.md), the statistics are derived in
-[docs/statistics.md](docs/statistics.md), every record is described in
-[docs/evidence-format.md](docs/evidence-format.md), the levers in
-[docs/levers.md](docs/levers.md), the command line in
-[docs/cli.md](docs/cli.md), and what a verdict does not claim in
-[docs/limitations.md](docs/limitations.md).
+[docs/PLAN.md](https://github.com/jemsbhai/epicormic/blob/main/docs/PLAN.md),
+the statistics are derived in
+[docs/statistics.md](https://github.com/jemsbhai/epicormic/blob/main/docs/statistics.md),
+every record is described in
+[docs/evidence-format.md](https://github.com/jemsbhai/epicormic/blob/main/docs/evidence-format.md),
+the levers in
+[docs/levers.md](https://github.com/jemsbhai/epicormic/blob/main/docs/levers.md),
+the command line in
+[docs/cli.md](https://github.com/jemsbhai/epicormic/blob/main/docs/cli.md),
+and what a verdict does not claim in
+[docs/limitations.md](https://github.com/jemsbhai/epicormic/blob/main/docs/limitations.md).
 
 ## Ninety seconds, no credentials
 
@@ -120,7 +125,8 @@ monitor's latest verdict from the store at every call:
   other than the one acknowledged, listing the differing fields.
 
 Containment is forward-looking: nothing is rolled back, and a person
-decides what happens next. See [docs/levers.md](docs/levers.md).
+decides what happens next. See
+[docs/levers.md](https://github.com/jemsbhai/epicormic/blob/main/docs/levers.md).
 
 ## Relation to pollard
 
@@ -148,7 +154,8 @@ discipline, and never calls it.
 
 It does not prevent a provider from changing a model. It observes the
 consequence, records evidence, and contains the effect. Read
-[docs/limitations.md](docs/limitations.md) before trusting a verdict.
+[docs/limitations.md](https://github.com/jemsbhai/epicormic/blob/main/docs/limitations.md)
+before trusting a verdict.
 
 ## Development
 
