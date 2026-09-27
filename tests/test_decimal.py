@@ -133,3 +133,10 @@ def test_encode_evidence_rejects_non_string_keys_and_unknown_types() -> None:
 )
 def test_encode_evidence_is_deterministic(value: dict[str, Any]) -> None:
     assert encode_evidence(value) == encode_evidence(value)
+
+
+def test_encode_evidence_reports_non_finite_decimals_by_path() -> None:
+    value = {"e": [Decimal("NaN"), Decimal("-Infinity"), Decimal("1.5")]}
+    encoded, non_finite = encode_evidence(value)
+    assert encoded == {"e": [None, None, "1.5"]}
+    assert non_finite == ["$.e[0]", "$.e[1]"]

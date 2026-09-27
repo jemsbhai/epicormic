@@ -26,3 +26,10 @@ def test_installed_pollard_satisfies_the_floor() -> None:
     major, minor = (int(part) for part in version("pollard").split(".")[:2])
     assert (major, minor) >= (1, 6)
     assert major < 2
+
+
+def test_pytest_plugin_module_imports_cleanly() -> None:
+    import epicormic.pytest_plugin as plugin
+
+    assert plugin.__doc__ is not None
+    assert not [name for name in dir(plugin) if name.startswith("pytest_")]
