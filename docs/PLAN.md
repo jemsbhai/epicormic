@@ -1,8 +1,12 @@
 # epicormic build plan
 
-Status: v0.1 specification, complete and approved. No code yet. Decisions
-D1 to D11 and D13 to D18 are approved; D12 is declined. No open
-questions; Phase 0 (scaffold) is next. Last updated 2026-09-27.
+Status: v0.1 specification, approved, under construction. Phases 0 to 3
+(scaffold, observation, scorers, Layer A statistics) are implemented and
+tested at 100 percent line coverage; 0.0.1 on PyPI is a name claim. Next:
+Phase 4 together with Phase 6 (verdict, opinion, ledger, sequential
+detectors), then Phase 5 (levers), Phase 7 (CLI, pytest plugin), Phase 8
+(0.1.0). Decisions D1 to D11 and D13 to D20 are approved; D12 is
+declined. Last updated 2026-09-27.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -197,6 +201,18 @@ Approved 2026-09-27:
   operators. Sections 10.1 and 10.2 specify both. The opinion is a derived
   summary for downstream fusion, never an input to the state rules of
   section 9.
+- D19 (2026-09-27, made during Phase 1 and reported without objection).
+  The window header identity commits to the panel digest, panel name,
+  window id, replay contract, and sampling and seed configuration only.
+  The requested sample count and the epicormic version are recorded in the
+  header note's metadata (`meta["epicormic"]`), not its payload: if they
+  were in the identity, raising N or upgrading epicormic would produce a
+  new header node and orphan every recorded sample. Section 5.3 and
+  section 6 reflect this.
+- D20 (2026-09-27, made during Phase 1 and reported without objection).
+  The seeded mock provider is part of the package as `epicormic.mock`
+  (`MockProvider`, `Drift`) rather than an example script, so the tests,
+  the CLI's calibration command, and users share one implementation.
 
 Declined:
 
@@ -347,14 +363,19 @@ WindowHeader (identity payload of the window header note):
   "panel_provenance_digest": "<64 hex>" | null,
   "panel_name": "...",
   "window_id": "...",
-  "samples": N,
-  "contract": <ReplayContract.to_dict()>,
+  "contract": <ReplayContract.to_dict()> | null,
   "sampling": {...},                    # copied from the panel
   "seed_from_attempt": bool,
   "seed_base": int,
-  "epicormic_version": "0.1.0"
+  "seed_field": "seed"
 }
 ```
+
+The requested sample count and the epicormic version are not part of the
+identity (D19); `observe` records them in the header's metadata as
+`{"epicormic": {"samples_requested": N, "epicormic_version": "..."}}`,
+updated on every rerun. The `panel_provenance_digest` field arrives with
+the JSON-LD panel loader (D13) and is absent until then.
 
 ### 5.4 Observation
 
@@ -433,7 +454,14 @@ Rules:
 - Model calls are made with `keep_chunks=False`; streaming is not used.
 - The window header note is written first, in `record` semantics that
   hybrid mode preserves (an existing header is served, a missing one is
-  written).
+  written); its metadata then receives the requested sample count and the
+  epicormic version (D19).
+- A sample refused by a budget or meter leaves a refusal node under its
+  sample anchor; the remaining samples of that probe are not attempted and
+  observation continues with the next probe, so a window-level exhaustion
+  costs at most one refusal node per probe. Refusal nodes have a different
+  kind from model calls, so a rerun with a larger budget dispatches exactly
+  the missing samples.
 
 Monitor run (label = `"epicormic-monitor/" + panel_digest[:16] + "/" + monitor_id`):
 
@@ -645,25 +673,25 @@ Verdict note identity payload, value-free:
   "scorers": {
     "<scorer name>": {
       "kind": "indicator | scalar",
-      "pooled": {"T": "0.083333", "p": "0.031984", "p_holm": "0.127936", "permutations": 2000, "seed": 0,
-                 "probes": 24, "fraction_effect_ge_min": "0.125000", "rejected": false},
+      "pooled": {"T": "0.0833333", "p": "0.031984", "p_holm": "0.127936", "permutations": 2000, "seed": 0,
+                 "probes": 24, "fraction_effect_ge_min": "0.125", "rejected": false},
       "per_probe": [
-        {"probe_id": "...", "n_b": 10, "n_c": 10, "effect": "-0.340000", "shift": "-42",
-         "p": "0.012345", "p_bh": "0.049380", "method": "mann_whitney_exact", "rejected": true}
+        {"probe_id": "...", "n_b": 10, "n_c": 10, "effect": "-0.34", "shift": "-42",
+         "p": "0.012345", "p_bh": "0.04938", "method": "mann_whitney_exact", "rejected": true}
         ... top_k entries by |effect|, then all rejected entries
       ],
       "per_probe_truncated": true,
       "sequential": {
-        "cusum": {"s_plus": "0.120000", "s_minus": "0.000000", "k": "0.1", "h": "0.4", "alarm": false},
+        "cusum": {"s_plus": "0.12", "s_minus": "0", "k": "0.1", "h": "0.4", "alarm": false},
         "page_hinkley": {"ph": "...", "min": "...", "delta": "0.05", "lambda": "0.5", "alarm": false},
-        "eprocess": {"e": "1.734000", "threshold": "20", "observations": 240, "mu0": "0.912500", "ties_excluded": 0, "alarm": false}
+        "eprocess": {"e": "1.734", "threshold": "20", "observations": 240, "mu0": "0.9125", "ties_excluded": 0, "alarm": false}
       }
     }
   },
   "opinion": {
     "format": "epicormic/opinion/v1",
     "source": "eprocess-average/v1",
-    "e": "1.734000",
+    "e": "1.734",
     "observations": 240,
     "prior_weight": "2",
     "base_rate": "0.5",
@@ -860,8 +888,9 @@ epicormic/
     _decimal.py        # decimal-string encoding (D6)
     panel.py           # Probe, Panel, load/save, digests
     window.py          # observe(): builds the window tree, dispatch wrapper, resumability
-    observation.py     # Observation, Reference, tree readers
-    scorers.py         # Scorer protocol, built-ins, registry
+    observation.py     # Observation, WindowView, tree readers
+    scorers.py         # Scorer protocol, Reference, built-ins, registry, ScoreTable
+    mock.py            # MockProvider and Drift: seeded step callable with injectable drift (D20)
     stats/__init__.py
     stats/exact.py     # Fisher's exact test
     stats/rank.py      # Mann-Whitney U, Cliff's delta, Hodges-Lehmann
@@ -877,8 +906,7 @@ epicormic/
     cli.py
   tests/  (section 14)
   examples/
-    mock_provider.py   # seeded stochastic step callable with injectable drift modes
-    01_local_panel.py  # observe a window against the mock provider, print the tree
+    01_local_panel.py  # observe a window against epicormic.mock, print the tree
     02_inject_drift.py # baseline window, drifted window, verdict
     03_levers.py       # DriftMeter refusal node and DriftPolicy confirmation
     04_calibrate.py    # A/A run
@@ -1059,14 +1087,18 @@ Publication decision follows the numbers, as with pollard.
 Each phase ends with the full test suite passing and a conventional
 commit; nothing is pushed without explicit approval.
 
-- Phase 0, scaffold: repository with `.gitignore` first, `.env.example`,
-  LICENSE, README stub, CHANGELOG, pyproject, CI (lint, test, build on
-  Linux, Windows, macOS), `_canon` with the conformance test, `_decimal`.
-- Phase 1, observation: `panel.py`, `window.py`, `observation.py`, the mock
-  provider, tree layout tests, resumability, budget refusal handling.
-- Phase 2, scorers: all built-ins with adapter-shape fixtures.
-- Phase 3, Layer A statistics: exact, rank, permutation, multiplicity, with
-  the property tests in section 14.
+- Phase 0, scaffold (done 2026-09-27): repository with `.gitignore` first,
+  `.env.example`, LICENSE, README stub, CHANGELOG, pyproject, CI (lint,
+  test, build on Linux, Windows, macOS), `_canon` with the conformance
+  test, `_decimal`.
+- Phase 1, observation (done 2026-09-27): `panel.py`, `window.py`,
+  `observation.py`, `mock.py`, tree layout tests, resumability, budget
+  refusal handling.
+- Phase 2, scorers (done 2026-09-27): all built-ins with adapter-shape
+  fixtures.
+- Phase 3, Layer A statistics (done 2026-09-27): exact, rank, permutation,
+  multiplicity, with the property tests in section 14 and SciPy
+  cross-checks; derivations in docs/statistics.md.
 - Phase 4, verdict, evidence, ledger: `verdict.py`, `ledger.py`, value-free
   scan, recompute check.
 - Phase 5, levers: `levers.py`, `docs/levers.md`, example 03.

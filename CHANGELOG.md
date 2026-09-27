@@ -6,6 +6,22 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+### Documentation
+
+- README: accurate status by phase, and a credential-free example that
+  observes a baseline and a drifted window on `MockProvider` and runs the
+  stratified permutation test, with its recorded output.
+- docs/statistics.md: derivations of every Layer A test as implemented
+  (Fisher, Mann-Whitney with the exact counting recurrence and the
+  tie-corrected normal approximation, Cliff's delta, Hodges-Lehmann,
+  permutation and stratified permutation, Benjamini-Hochberg, Holm) and the
+  Layer B and opinion specifications, with references (three verified
+  against the publishers on 2026-09-27).
+- docs/PLAN.md: status by phase, D19 (header identity excludes the sample
+  count and version) and D20 (mock lives in the package), corrected example
+  payload numbers to what the decimal encoder emits, and the refusal
+  handling rule in section 6.
+
 ### Added
 
 - `epicormic.stats` (Layer A, pure Python): Fisher's exact test with risk
