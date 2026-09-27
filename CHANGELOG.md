@@ -8,6 +8,12 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.panel`: `Probe` and `Panel` with strict validation, document
+  and JSON file round-trips, domain-separated digests (`epicormic/probe/v1`,
+  `epicormic/panel/v1`), decimal-string sampling parameters decoded only in
+  the dispatched request, and per-attempt seeding (section 5.2).
+- Lazy public exports on `epicormic` with a `TYPE_CHECKING` block for static
+  analysis.
 - `epicormic._canon`: the documented pollard canonical identity
   serialization (`canonical_bytes`, `validate_identity_value`) and
   domain-separated SHA-256 digests (`domain_digest`), with a property-based

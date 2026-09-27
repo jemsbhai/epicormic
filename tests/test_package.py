@@ -5,6 +5,7 @@ from __future__ import annotations
 import re
 from importlib.metadata import requires, version
 
+import pytest
 from packaging.requirements import Requirement
 
 import epicormic
@@ -33,3 +34,13 @@ def test_pytest_plugin_module_imports_cleanly() -> None:
 
     assert plugin.__doc__ is not None
     assert not [name for name in dir(plugin) if name.startswith("pytest_")]
+
+
+def test_lazy_exports_resolve_and_unknown_names_fail() -> None:
+    from epicormic.panel import Panel
+
+    assert epicormic.Panel is Panel
+    assert "Panel" in dir(epicormic)
+    assert set(epicormic.__all__) >= {"Panel", "Probe", "load_panel", "save_panel"}
+    with pytest.raises(AttributeError, match="no attribute 'Missing'"):
+        _ = epicormic.Missing
