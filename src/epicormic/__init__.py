@@ -23,17 +23,39 @@ _EXPORTS: dict[str, str] = {
     "Probe": "epicormic.panel",
     "load_panel": "epicormic.panel",
     "save_panel": "epicormic.panel",
+    "WINDOW_FORMAT": "epicormic.window",
+    "WindowError": "epicormic.window",
+    "WindowReport": "epicormic.window",
+    "SampleEvent": "epicormic.window",
+    "observe": "epicormic.window",
+    "Observation": "epicormic.observation",
+    "WindowView": "epicormic.observation",
+    "find_window_headers": "epicormic.observation",
+    "read_window": "epicormic.observation",
+    "Drift": "epicormic.mock",
+    "MockProvider": "epicormic.mock",
 }
 
 __all__ = ["__version__", *sorted(_EXPORTS)]
 
 if TYPE_CHECKING:
+    from .mock import Drift as Drift
+    from .mock import MockProvider as MockProvider
+    from .observation import Observation as Observation
+    from .observation import WindowView as WindowView
+    from .observation import find_window_headers as find_window_headers
+    from .observation import read_window as read_window
     from .panel import PANEL_FORMAT as PANEL_FORMAT
     from .panel import Panel as Panel
     from .panel import PanelError as PanelError
     from .panel import Probe as Probe
     from .panel import load_panel as load_panel
     from .panel import save_panel as save_panel
+    from .window import WINDOW_FORMAT as WINDOW_FORMAT
+    from .window import SampleEvent as SampleEvent
+    from .window import WindowError as WindowError
+    from .window import WindowReport as WindowReport
+    from .window import observe as observe
 
 
 def __getattr__(name: str) -> Any:

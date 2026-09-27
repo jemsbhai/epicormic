@@ -8,6 +8,21 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ### Added
 
+- `epicormic.window.observe`: records N samples of every probe in one
+  pollard run using the D5 layout (window header, probe branch anchors,
+  probe headers, sample branch anchors, model calls), in hybrid mode so
+  reruns serve existing samples and dispatch only the missing ones;
+  requested sample count and epicormic version live in header metadata,
+  never in identity; budget and meter refusals are recorded per probe and
+  resumable; per-sample callbacks report served, dispatched, or refused.
+- `epicormic.observation`: `read_window`, `find_window_headers`, and
+  `find_window_root` turn a stored window back into `Observation` records
+  per probe in probe and attempt order, with refusal ids.
+- `epicormic.mock.MockProvider` and `Drift`: a seeded, credential-free step
+  callable with injectable drift (match rate, length, latency, refusals,
+  tool swap, truncation), used by tests and available to users (this lives
+  in the package rather than under examples/ as docs/PLAN.md section 13
+  first listed it, so tests and the CLI can share it).
 - `epicormic.panel`: `Probe` and `Panel` with strict validation, document
   and JSON file round-trips, domain-separated digests (`epicormic/probe/v1`,
   `epicormic/panel/v1`), decimal-string sampling parameters decoded only in
