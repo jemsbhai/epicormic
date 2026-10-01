@@ -6,8 +6,8 @@ opinion, ledger, levers, CLI, pytest plugin, JSON-LD extra, examples,
 documentation set, installed-wheel smoke test) are done and tested at 100
 percent line coverage; 0.1.0 is the first functional release. Next: Phase
 9 (experiments and the paper) in a separate repository. Decisions D1 to
-D11 and D13 to D23 are approved; D12 is declined. Last updated
-2026-09-27.
+D11 and D13 to D26 are approved; D12 is declined. Last updated
+2026-09-30.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -244,6 +244,46 @@ Approved 2026-09-27:
   last by `created_at` then id. The verdict judges the last header, so the
   ordinal is what makes the current window of a changed contract
   well-defined.
+- D15 addendum (2026-09-30). The request was filed as pollard issue #27
+  (github.com/jemsbhai/pollard/issues/27).
+- D24 (2026-09-30). EXP-D re-scope: daily windows over 28 days replace
+  weekly windows over at least twelve weeks, so the whole experimental
+  program fits a three to four week horizon. One window per day on one
+  model from each of the four provider families of D16, through the
+  matching pollard adapter, beside the local control of D11. On day 15 the
+  model id requested from each family switches from one released snapshot
+  to a second released snapshot of the same family, both pinned in the
+  pre-registration. The switch is a declared change by construction: the
+  replay contract fingerprint moves, ContractGate must refuse dispatch on
+  day 15 until the change is acknowledged, and detection delay is measured
+  in days under real API noise. Two things 28 days cannot show, and the
+  paper says so: silent change on a hosted provider (D26 covers the silent
+  path locally) and provider behaviour beyond the observation period. A
+  window that does not run on its day is recorded as missed under a rule
+  the pre-registration fixes, and is never backfilled.
+- D25 (2026-09-30). The 10 USD per month cap of D17 holds at daily
+  cadence by using the cheap tier of each family. At the section 16
+  estimate of about 0.05 USD per model-window on a cheap tier (default
+  panel of 24 probes, N = 10), four families for 28 days is 112
+  model-windows, on the order of 6 USD, leaving headroom for the day 15
+  snapshots and for retries. The pre-registration pins the model names,
+  their list prices on its date, N, panel size, and the `Budget(usd=...)`
+  of every model-window; a window that reaches its budget records refusal
+  nodes rather than overspending, as D17 requires.
+- D26 (2026-09-30). EXP-D gains a second local arm, the silent-change arm,
+  beside the pristine control. It is served by its own llama-server
+  instance with the control's configuration and requested model name, so
+  its replay contract fingerprint is fixed for all 28 days, and on day 15
+  the GGUF behind that instance is swapped for a different build (another
+  quantization or checkpoint of the same model, pinned by file digest in
+  the pre-registration). It is the only arm in which a behavioural change
+  arrives with `contract_changed` false, which is what lets the paper
+  claim silent-change detection on a real inference server under real
+  sampling noise rather than on the mock alone. The smoke profile verifies
+  before day 1 that the fingerprint is the same with either build loaded;
+  if it is not, the arm is dropped and the drop is logged, not worked
+  around. The pristine control is unchanged and must stay `stable` on all
+  28 days.
 
 Declined:
 
@@ -1077,7 +1117,9 @@ never trips on its own definition, across docs and docstrings.
 
 Run under the lab-runner discipline with hypotheses, seeds, environment,
 and commit SHAs recorded before data collection. The local control (D11) is
-present in every experiment.
+present in every experiment. Order of execution: EXP-A, then EXP-C (its
+delay results set the detection-delay bound EXP-D pre-registers), then EXP-D
+opens and collects daily while EXP-B and EXP-E run.
 
 - EXP-A, calibration. A/A windows on the mock provider and on the local
   control, 200 replications each at N in {5, 10, 20}. Hypothesis: the
@@ -1093,22 +1135,33 @@ present in every experiment.
   known window; compare CUSUM, Page-Hinkley, and the e-process on average
   detection delay against false alarm rate; calibrate the initial defaults
   and record the chosen values.
-- EXP-D, longitudinal hosted canary. Weekly windows on hosted models from
-  the four provider families of D16 through pollard's adapters, for at
-  least twelve weeks, alongside the local control, under the 10 USD per
-  month cap of D17. Budget arithmetic the pre-registration must reconcile:
-  the default panel of 24 probes at N = 10 is 240 calls per model per
-  window, roughly 144K input and 48K output tokens at 600 plus 200 tokens
-  per call; on a cheap tier (order of 0.15 and 0.60 USD per million
-  tokens) about 0.05 USD per model-window, on a frontier tier (order of 3
-  and 15 USD per million) about 1.15 USD. Four frontier-tier models weekly
-  would need about 20 USD per month, so the pre-registration picks tiers,
-  N, and panel size that fit 10 USD, allocates a `Budget(usd=...)` per
-  provider-window from it, and records the allocation before the first
-  window. Pre-registered hypotheses: the control stays `stable`; any
-  `drift` verdict on a hosted model coincides with a provider-announced
-  change, a fingerprint change, or is reproduced by a second independent
-  window within one week.
+- EXP-D, hosted canary over 28 days with a declared change on day 15
+  (D24, D25, D26). One window per day on one cheap-tier model from each of
+  the four provider families of D16 through pollard's adapters, under the
+  10 USD per month cap of D17, beside two local arms: the pristine control
+  of D11 and the silent-change arm of D26. On day 15 each hosted model id
+  switches to a second released snapshot of its family, and the GGUF
+  behind the silent-change arm is swapped under an unchanged name. Budget
+  arithmetic: the default panel of 24 probes at N = 10 is 240 calls per
+  model per window, roughly 144K input and 48K output tokens at 600 plus
+  200 tokens per call; on a cheap tier (order of 0.15 and 0.60 USD per
+  million tokens) about 0.05 USD per model-window, so four cheap-tier
+  models daily for 28 days is 112 model-windows, on the order of 6 USD,
+  inside the cap; a frontier tier (order of 3 and 15 USD per million) at
+  about 1.15 USD per model-window would need on the order of 130 USD for
+  the same design, which is why the tiers are cheap (D25). The
+  pre-registration fixes, before the first window: model names and their
+  list prices on that date, N, panel size, the `Budget(usd=...)` of every
+  model-window, the missed-window rule, and the detection-delay bound
+  taken from EXP-C. Pre-registered hypotheses: the control stays `stable`
+  on all 28 days; before day 15 every hosted arm stays `stable` at the
+  declared false alarm rate, and any `drift` verdict coincides with a
+  provider-announced change or a fingerprint change, or is reproduced by
+  the next day's window; on day 15 ContractGate refuses dispatch on every
+  hosted arm until the fingerprint change is acknowledged; after day 15
+  every hosted arm and the silent-change arm reach `drift` within the
+  pre-registered bound, the hosted arms with `contract_changed` true and
+  the silent-change arm with it false.
 - EXP-E, cost and energy of monitoring. Tokens, USD, wall-clock, and NVML
   joules per window against the power reached in EXP-B: the monitoring
   efficiency frontier, connecting to the energy-aware line of work.
