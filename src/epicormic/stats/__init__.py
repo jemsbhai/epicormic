@@ -29,6 +29,7 @@ from .sequential import (
     clipped_rate,
     cusum,
     page_hinkley,
+    rate_interval,
     sign_transform,
 )
 
@@ -53,6 +54,7 @@ __all__ = [
     "mann_whitney",
     "page_hinkley",
     "permutation_test",
+    "rate_interval",
     "rejected",
     "sign_transform",
     "stratified_permutation_test",

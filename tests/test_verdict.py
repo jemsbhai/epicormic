@@ -361,21 +361,25 @@ def test_top_k_truncation_keeps_rejected_entries(scenario: tuple[MemoryStore, Pa
 
 
 def test_overwhelming_evidence_is_recorded_without_floats() -> None:
+    # 40 samples of 8 probes: the baseline interval for 320 of 320 matches has a
+    # lower bound near 0.986, and 320 straight mismatches overflow the wealth
     panel = small_panel(8)
     store = MemoryStore()
     observe(
-        panel, window_id="base", samples=20, fn=MockProvider(seed=1, match_rate=1.0), store=store
+        panel, window_id="base", samples=40, fn=MockProvider(seed=1, match_rate=1.0), store=store
     )
     observe(
         panel,
         window_id="cur",
-        samples=20,
+        samples=40,
         fn=MockProvider(seed=2, drift=Drift(match_rate=0.0)),
         store=store,
     )
     monitor = Monitor("m16", panel.digest, ("base",), config(scorers=("normalized_match",)))
     verdict = analyze(store, monitor, "cur")
     eprocess = verdict.payload["scorers"]["normalized_match"]["sequential"]["eprocess"]
+    assert eprocess["upper"] == "1" and float(eprocess["lower"]) > 0.98
+    assert eprocess["interval_confidence"] == "0.975" and eprocess["threshold"] == "40"
     assert eprocess["e"] is None and eprocess["max_e"] is None
     assert float(eprocess["log_e"]) > 700 and eprocess["alarm"] is True
     assert (
@@ -474,3 +478,27 @@ def test_probe_without_baseline_scores_is_skipped_by_the_sign_stream(
     partial = verdict.payload["scorers"]["partial"]
     assert "p0" in partial["probes_below_n_min"]
     assert partial["sequential"]["eprocess"]["observations"] > 0
+
+
+def test_constant_indicators_stay_stable_over_a_long_null_chain() -> None:
+    # Regression for the 0.1.0 plug-in: refusal and truncated are constant 0 on
+    # the mock, the clipped null rate was 0.0021, and the downward e-process
+    # alarmed inside window 13 of an EXP-D length chain. Each window gets its
+    # own provider seed so that the windows are independent draws.
+    panel = small_panel(8)
+    store = MemoryStore()
+    observe(panel, window_id="w00", samples=10, fn=MockProvider(seed=100), store=store)
+    scorers = ("refusal", "truncated", "normalized_match", "output_chars")
+    monitor = Monitor("m-null-chain", panel.digest, ("w00",), config(scorers=scorers))
+    for index in range(1, 29):
+        window = f"w{index:02d}"
+        observe(panel, window_id=window, samples=10, fn=MockProvider(seed=100 + index), store=store)
+        verdict = analyze(store, monitor, window)
+        for name in ("refusal", "truncated"):
+            eprocess = verdict.payload["scorers"][name]["sequential"]["eprocess"]
+            assert eprocess["alarm"] is False, (window, name, eprocess)
+            assert float(eprocess["max_e"]) <= 1.0
+            assert eprocess["lower"] == "0" and 0 < float(eprocess["upper"]) < 0.06
+            assert eprocess["interval_confidence"] == "0.975" and eprocess["threshold"] == "40"
+            assert eprocess["mu0"] == "0"
+        assert "refusal" not in verdict.rule_fired and "truncated" not in verdict.rule_fired

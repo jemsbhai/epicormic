@@ -39,12 +39,12 @@ from .scorers import (
 from .stats import (
     benjamini_hochberg,
     betting_eprocess,
-    clipped_rate,
     cusum,
     holm,
     indicator_test,
     mann_whitney,
     page_hinkley,
+    rate_interval,
     sign_transform,
     stratified_permutation_test,
 )
@@ -374,6 +374,9 @@ class _ScorerAnalysis:
     ph_state: Any = None
     e_state: Any = None
     e_mu0: float | None = None
+    e_lower: float | None = None
+    e_upper: float | None = None
+    e_confidence: float | None = None
     e_ties: int = 0
     e_baseline_n: int = 0
 
@@ -766,7 +769,7 @@ def _sequential(
     ties = 0
     current_table = score_window(current, (scorer,), references)
     if scorer.kind == "indicator":
-        mu0 = clipped_rate(int(sum(baseline_values)), len(baseline_values))
+        ones, total = int(sum(baseline_values)), len(baseline_values)
         for table in (*history_tables, current_table):
             for pid in table.probe_ids:
                 stream.extend(int(v) for v in table.series(scorer.name, pid))
@@ -787,7 +790,7 @@ def _sequential(
             non_ties += len(signs.values)
         if non_ties == 0:
             return
-        mu0 = clipped_rate(above, non_ties)
+        ones, total = above, non_ties
         for table in (*history_tables, current_table):
             for pid in table.probe_ids:
                 if pid not in medians:
@@ -795,8 +798,19 @@ def _sequential(
                 signs = sign_transform(table.series(scorer.name, pid), medians[pid])
                 stream.extend(signs.values)
                 ties += signs.ties_excluded
-    analysis.e_state = betting_eprocess(stream, mu0=mu0, alpha=e_alpha, grid=grid)
-    analysis.e_mu0 = mu0
+    # the null is the exact binomial interval of the baseline rate at
+    # confidence 1 - alpha / 2, not a clipped point estimate (D27): a point
+    # null accumulates the gap between the estimate and the truth without
+    # bound, so a constant indicator alarmed on schedule
+    confidence = 1 - e_alpha / 2
+    lower, upper = rate_interval(ones, total, confidence)
+    analysis.e_state = betting_eprocess(
+        stream, lower=lower, upper=upper, alpha=e_alpha, grid=grid
+    )
+    analysis.e_mu0 = ones / total
+    analysis.e_lower = lower
+    analysis.e_upper = upper
+    analysis.e_confidence = confidence
     analysis.e_ties = ties
     analysis.e_baseline_n = len(baseline_values)
 
@@ -979,6 +993,9 @@ def _payload(
                     "threshold": e_state.threshold,
                     "observations": e_state.observations,
                     "mu0": analysis.e_mu0,
+                    "lower": analysis.e_lower,
+                    "upper": analysis.e_upper,
+                    "interval_confidence": analysis.e_confidence,
                     "baseline_observations": analysis.e_baseline_n,
                     "ties_excluded": analysis.e_ties,
                     "alarm": e_state.alarm,

@@ -167,7 +167,7 @@ Each `scorers.<name>` entry:
 | `probes_below_n_min` | Probes with too few observations for the per-probe test. |
 | `sequential.cusum` | `s_plus`, `s_minus`, `k`, `h`, `windows`, `alarm`. |
 | `sequential.page_hinkley` | `excursion`, `delta`, `lambda`, `windows`, `alarm`. |
-| `sequential.eprocess` | `e`, `log_e`, `max_e`, `threshold`, `observations`, `mu0`, `baseline_observations`, `ties_excluded`, `alarm`, `alarm_index`. |
+| `sequential.eprocess` | `e`, `log_e`, `max_e`, `threshold` (`2 / alpha` for the interval null in force since 0.2.0), `observations`, `mu0` (the unclipped baseline rate), `lower`, `upper`, `interval_confidence` (the exact binomial interval of the baseline rate that is the null, D27), `baseline_observations`, `ties_excluded`, `alarm`, `alarm_index`. |
 
 The `opinion` object (`epicormic/opinion/v1`): `source`
 (`eprocess-average/v1`), `observations`, `prior_weight`, `base_rate`,

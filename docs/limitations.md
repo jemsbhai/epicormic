@@ -23,11 +23,14 @@ Epicormic records the contract digest so a changed fingerprint can be
 told apart from a silent change, but a silent change is only ever a
 statistical fact.
 
-**Anytime-valid tests have no effect-size floor.** The sequential
+**Anytime-valid tests have a small effect-size floor.** The sequential
 detectors (CUSUM, Page-Hinkley, the betting e-process) will eventually
-alarm on any systematic shift, however small, given enough observations.
-This is the correct behaviour for a monitor, but it means a scorer whose
-measurements shift for reasons unrelated to the provider will alarm.
+alarm on any systematic shift that leaves the baseline's exact binomial
+interval, however small, given enough observations; the e-process cannot
+see a shift that stays inside that interval, whose width the verdict
+records as `lower` and `upper` and which narrows as the baseline grows
+(D27). This is the correct behaviour for a monitor, but it means a scorer
+whose measurements shift for reasons unrelated to the provider will alarm.
 `latency_s` is the standing example: it is a real operational signal on a
 hosted provider, but on a local mock its microsecond timings shift with
 machine load, so calibration on the mock uses behavioural scorers only.
