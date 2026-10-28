@@ -13,6 +13,7 @@ from epicormic.stats import (
     clipped_rate,
     cusum,
     page_hinkley,
+    rate_interval,
     sign_transform,
 )
 from epicormic.stats.sequential import DEFAULT_GRID
@@ -174,3 +175,81 @@ def test_clipped_rate() -> None:
         clipped_rate(0, 0)
     with pytest.raises(ValueError):
         clipped_rate(3, 2)
+
+
+# --- interval null (D27) ------------------------------------------------------
+
+
+def test_rate_interval_reference_values() -> None:
+    low, high = rate_interval(10, 200, 0.95)
+    assert low == pytest.approx(0.02423, abs=1e-4)
+    assert high == pytest.approx(0.09003, abs=1e-4)
+    low, high = rate_interval(0, 240, 0.975)
+    assert low == 0.0 and high == pytest.approx(0.01809, abs=1e-4)
+    low, high = rate_interval(240, 240, 0.975)
+    assert high == 1.0 and low == pytest.approx(1 - 0.01809, abs=1e-4)
+    low, high = rate_interval(216, 240, 0.975)
+    assert low == pytest.approx(0.8481, abs=1e-3) and high == pytest.approx(0.9390, abs=1e-3)
+    for ones, total, confidence in ((0, 0, 0.95), (3, 2, 0.95), (1, 2, 1.0), (1, 2, 0.0)):
+        with pytest.raises(ValueError):
+            rate_interval(ones, total, confidence)
+
+
+def test_interval_null_arguments_and_threshold() -> None:
+    point = betting_eprocess([], mu0=0.5)
+    assert point.threshold == 20 and point.lower is None and point.confidence is None
+    interval = betting_eprocess([], lower=0.4, upper=0.6, alpha=0.05)
+    assert interval.threshold == 40 and interval.confidence == 0.975
+    assert interval.lower == 0.4 and interval.upper == 0.6 and interval.mu0 == 0.5
+    with pytest.raises(ValueError, match="not both"):
+        betting_eprocess([], mu0=0.5, lower=0.4, upper=0.6)
+    with pytest.raises(ValueError, match="both lower and upper"):
+        betting_eprocess([], lower=0.4)
+    for lower, upper in ((0.6, 0.4), (-0.1, 0.5), (0.5, 1.1), (0.0, 0.0), (1.0, 1.0)):
+        with pytest.raises(ValueError):
+            betting_eprocess([], lower=lower, upper=upper)
+    assert betting_eprocess([0, 1], lower=0.0, upper=1.0).e_value <= 1.0
+
+
+def test_constant_baseline_no_longer_alarms_on_a_constant_stream() -> None:
+    # epicormic 0.1.0 clipped a baseline of 0 in 240 to 0.0021 and alarmed on a
+    # stream of zeros inside window 13 of an EXP-D run (observations 2880 to
+    # 3119); the interval null [0, 0.018] bets downward with lower = 0 and
+    # never moves
+    lower, upper = rate_interval(0, 240, 0.975)
+    stream = [0] * 6720
+    state = betting_eprocess(stream, lower=lower, upper=upper, alpha=0.05)
+    assert not state.alarm and state.max_e_value <= 1.0 and state.e_value <= 1.0
+    old = betting_eprocess(stream, mu0=clipped_rate(0, 240), alpha=0.05)
+    assert old.alarm and old.alarm_index is not None and 2880 <= old.alarm_index < 3120
+    # the mirror image: a baseline of all ones and a stream of ones
+    lower, upper = rate_interval(240, 240, 0.975)
+    state = betting_eprocess([1] * 6720, lower=lower, upper=upper, alpha=0.05)
+    assert not state.alarm and state.e_value <= 1.0
+
+
+def test_interval_null_still_detects_a_real_shift() -> None:
+    rng = random.Random(4)
+    lower, upper = rate_interval(0, 240, 0.975)
+    delays = []
+    for _ in range(100):
+        values = [int(rng.random() < 0.2) for _ in range(400)]
+        state = betting_eprocess(values, lower=lower, upper=upper, alpha=0.05)
+        assert state.alarm and state.alarm_index is not None
+        delays.append(state.alarm_index + 1)
+    delays.sort()
+    assert delays[len(delays) // 2] <= 20
+
+
+def test_ville_bound_holds_with_a_baseline_derived_interval() -> None:
+    rng = random.Random(5)
+    for mu in (0.02, 0.5, 0.9):
+        alarms = 0
+        streams = 300
+        for _ in range(streams):
+            ones = sum(int(rng.random() < mu) for _ in range(240))
+            lower, upper = rate_interval(ones, 240, 0.975)
+            values = [int(rng.random() < mu) for _ in range(1500)]
+            alarms += betting_eprocess(values, lower=lower, upper=upper, alpha=0.05).alarm
+        assert alarms / streams <= 0.05, (mu, alarms / streams)
+

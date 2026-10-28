@@ -168,36 +168,54 @@ Page-Hinkley (Hinkley, 1971) on `z_w` with running mean `m_w`:
 when `PH_w - M_w >= lambda`, with the mirrored form for decreases. Initial
 defaults `delta = 0.05`, `lambda = 0.5`.
 
-Betting e-process, anytime-valid. For an indicator scorer, order every
-current observation across windows by (window, probe index, attempt) and
-let `x_i` in `{0, 1}`, with `mu0` the pooled baseline rate. The upward
-wealth is `K+_i = K+_(i-1) (1 + lam (x_i - mu0))` with `lam` in
-`(0, 1 / mu0)`, the downward wealth is `K-_i = K-_(i-1) (1 - lam (x_i -
-mu0))` with `lam` in `(0, 1 / (1 - mu0))`, each averaged over a fixed grid
-of fractions of its maximal `lam` (an average of e-processes is an
-e-process), and the two-sided e-value is `E_i = (K+_i + K-_i) / 2`. Under
-the null `E[x_i] = mu0`, every `K` is a nonnegative supermartingale with
-initial value 1, so by Ville's inequality (Ville, 1939)
-`P(sup_i E_i >= 1 / alpha) <= alpha`: alarming when `E_i >= 1 / alpha` has
+Betting e-process, anytime-valid, against an interval null (D27). For an
+indicator scorer, order every current observation across windows by
+(window, probe index, attempt) and let `x_i` in `{0, 1}`. Let `[l, u]` be
+the exact binomial (Clopper-Pearson, 1934) interval of the pooled baseline
+rate at confidence `1 - alpha / 2`: for `s` successes in `n` baseline
+observations, `l` solves `P(Bin(n, l) >= s) = alpha / 4` (and is 0 when
+`s = 0`), `u` solves `P(Bin(n, u) <= s) = alpha / 4` (and is 1 when
+`s = n`), each by bisection on the exact binomial distribution. The upward
+wealth is `K+_i = K+_(i-1) (1 + lam (x_i - u))` with `lam` in `(0, 1 / u)`,
+the downward wealth is `K-_i = K-_(i-1) (1 - lam (x_i - l))` with `lam` in
+`(0, 1 / (1 - l))`, each averaged over a fixed grid of fractions of its
+maximal `lam`, and the two-sided e-value is `E_i = (K+_i + K-_i) / 2`.
+Whenever the true rate `mu` lies in `[l, u]`, `E[1 + lam (x_i - u)] =
+1 + lam (mu - u) <= 1` and `E[1 - lam (x_i - l)] = 1 - lam (mu - l) <= 1`,
+so every `K`, every grid average, and `E` are nonnegative supermartingales
+with initial value 1, and by Ville's inequality (Ville, 1939)
+`P(sup_i E_i >= 2 / alpha) <= alpha / 2`. The interval misses `mu` with
+probability at most `alpha / 2`, so alarming when `E_i >= 2 / alpha` has
 type I error at most `alpha` at any stopping time, however many windows
-are inspected. This is the betting construction of Waudby-Smith and
-Ramdas (2024); the game-theoretic framing is surveyed by Ramdas, Grünwald,
-Vovk, and Shafer (2023). For scalar scorers the stream is the per-probe
-sign transform `x_i = 1[score_i > baseline median of that probe]` with
-ties excluded and counted, and `mu0` is the baseline's own above-median
-rate among non-ties, pooled across probes and clipped away from 0 and 1.
-It equals one half only when the score distribution has no mass at the
-median: a discrete score such as output length on a mostly matching
-provider sits mostly at the median, and its non-ties are not split evenly
-around it, so a fixed null of one half would alarm on nothing. Caveat:
-`mu0` is estimated from the baseline in both the indicator and the scalar
-case; the guarantee is exact only when the baseline is large relative to
-the current stream, and the verdict records the baseline sample count. A
-two-sample sequential test that removes the plug-in is the v0.2 research
-item. A further property to state plainly: an anytime-valid test of a rate
-eventually detects any systematic shift, however small, so the e-process
-has no effect-size floor; the choice of scorers decides which shifts are
-worth detecting.
+are inspected. The bet is the construction of Waudby-Smith and Ramdas
+(2024) with the point null replaced by the two bounds; the game-theoretic
+framing is surveyed by Ramdas, Grünwald, Vovk, and Shafer (2023). For
+scalar scorers the stream is the per-probe sign transform
+`x_i = 1[score_i > baseline median of that probe]` with ties excluded and
+counted, and the interval is that of the baseline's own above-median rate
+among non-ties, pooled across probes. That rate equals one half only when
+the score distribution has no mass at the median: a discrete score such as
+output length on a mostly matching provider sits mostly at the median, and
+its non-ties are not split evenly around it, so a fixed null of one half
+would alarm on nothing (D21).
+
+Why an interval and not a plug-in. epicormic 0.1.0 used the baseline rate
+itself as a point null, clipped half an observation away from 0 and 1. A
+betting process accumulates any constant gap between its null and the
+truth without bound, so a scorer whose baseline was constant (a provider
+that never refuses) alarmed on a schedule set by the clipping: 0 in 240
+baseline observations was clipped to 0.0021, and a stream of zeros
+reached the threshold inside the thirteenth window of 240 observations,
+identically on every run. The same applies, more slowly, to any estimated
+rate, since the estimate is never exactly the truth. With the interval the
+bettor on the side of a constant baseline never moves, the other side
+still detects a change, and an estimation error inside the interval costs
+nothing. The price is the effect-size floor: a true rate that stays inside
+`[l, u]` is never detected, and the width of the interval, which the
+verdict records with the baseline sample count, is the smallest shift the
+e-process can see. The floor narrows as the baseline grows. A two-sample
+sequential test that removes the baseline estimate altogether is a later
+research item.
 
 The e-process state is recomputed from the store on every verdict, never
 cached, so a verdict is a pure function of the observations and the

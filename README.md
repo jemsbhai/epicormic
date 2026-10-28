@@ -6,7 +6,8 @@ Epicormic shoots sprout from dormant buds after a tree is pollarded: growth
 that reappears after the cut. epicormic watches for model behaviour that
 reappears, or changes, after a baseline has been pinned.
 
-Status: 0.1.0, the first functional release. The specification is
+Status: 0.2.0, which corrects the e-process null (D27) after the first
+functional release, 0.1.0. The specification is
 [docs/PLAN.md](https://github.com/jemsbhai/epicormic/blob/main/docs/PLAN.md),
 the statistics are derived in
 [docs/statistics.md](https://github.com/jemsbhai/epicormic/blob/main/docs/statistics.md),
@@ -53,14 +54,14 @@ for window_id in ("week-2", "week-3"):
 ```
 
 Output, locked (the panel digest is the same on every platform and every
-version; the verdict node ids are the same wherever epicormic 0.1.0 runs on
+version; the verdict node ids are the same wherever epicormic 0.2.0 runs on
 pollard 1.6, because the mock is seeded and every record is
 content-addressed):
 
 ```
 panel 5cd5533a081de63dfa77c821f26b12ed56e8f842caed287304a6ad9718d3666c
-week-2 stable T -0.0375 p_holm 0.675662 node 4aac2d7f0eed1482
-week-3 drift T -0.5375 p_holm 0.0009995 node 291011f05749f1c3
+week-2 stable T -0.0375 p_holm 0.675662 node 768b55b700df96d2
+week-3 drift T -0.5375 p_holm 0.0009995 node dbf8530ab643c947
 ```
 
 Week 2 is a second provider instance with no injected change: sampling
@@ -70,13 +71,19 @@ permutation test rejects. Both verdicts are appended to the monitor's chain
 in the pollard store as value-free evidence; `recompute_verdict` re-derives
 either from the observations alone.
 
-The same loop from a shell, with the mock provider as the step callable:
+The same loop from a shell, with the mock provider as the step callable.
+`panel.json` is the panel above saved with `save_panel`, and `config.json`
+is an analysis configuration with behavioural scorers,
+`{"format": "epicormic/config/v1", "scorers": ["normalized_match", "exact_match", "output_chars"]}`:
+the default scorer set includes `latency_s`, and on the mock the
+microsecond call timings shift systematically between runs, so without the
+configuration a pair of unchanged windows reports drift in latency (D22):
 
 ```
 epicormic panel digest panel.json
 epicormic observe --panel panel.json --store runs.db --window week-1 --samples 10 --fn epicormic.mock:step
 epicormic observe --panel panel.json --store runs.db --window week-2 --samples 10 --fn epicormic.mock:step
-epicormic verdict --store runs.db --monitor weekly --panel panel.json --baseline week-1 --current week-2
+epicormic verdict --store runs.db --monitor weekly --panel panel.json --baseline week-1 --current week-2 --config config.json
 epicormic status --store runs.db --monitor weekly
 epicormic report --store runs.db --monitor weekly --out report.json
 ```
@@ -99,7 +106,8 @@ baseline and current samples of each probe are exchangeable and reports the
 evidence against it, per probe (Fisher's exact test or Mann-Whitney U with
 Benjamini-Hochberg), pooled across probes (a stratified permutation test on
 Cliff's delta with Holm), and across windows (CUSUM, Page-Hinkley, and an
-anytime-valid betting e-process). A verdict never names a cause; a declared
+anytime-valid betting e-process whose null is the baseline's exact
+binomial interval). A verdict never names a cause; a declared
 change of `ReplayContract` is recorded as `contract_changed` so a migration
 can be told apart from a silent change.
 
@@ -147,8 +155,8 @@ discipline, and never calls it.
   opinion fusion across monitors.
 - `epicormic[cost]`: pollard's tokenmaster meters, so the `cost_usd` and
   `energy_j` scorers have readings to score.
-- `epicormic[vector]`: reserved for the embedding and MMD scorers of 0.2;
-  it installs numpy and nothing in 0.1 uses it.
+- `epicormic[vector]`: reserved for the embedding and MMD scorers of a later
+  release; it installs numpy and nothing in 0.2 uses it.
 
 ## What it will not do
 

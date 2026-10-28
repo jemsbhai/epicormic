@@ -6,10 +6,56 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-28
+
+The e-process null is the baseline's exact binomial interval, not a
+clipped point estimate (D27). Verdict identities change, as on every
+release.
+
+### Changed
+
+- `betting_eprocess` bets against an interval null `[lower, upper]`: the
+  upward wealth stakes against `upper`, the downward wealth against
+  `lower`, each a nonnegative supermartingale whenever the true rate lies in
+  the interval. The verdict passes the exact binomial (Clopper-Pearson)
+  interval of the pooled baseline rate at confidence `1 - alpha / 2` and
+  alarms at `2 / alpha` (40 at the default alpha), so the false alarm
+  probability is bounded by alpha with half the budget on the interval and
+  half on the bet. A point null is still available through `mu0`, at
+  threshold `1 / alpha`.
+- The verdict's `sequential.eprocess` block gains `lower`, `upper`, and
+  `interval_confidence`; `mu0` is now the unclipped baseline rate and
+  `threshold` the value in force. `EProcessState` gains the same three
+  fields with defaults, so positional construction is unchanged.
+- The e-process's effect-size floor is the width of the baseline interval,
+  which narrows as the baseline grows; a shift that stays inside it is not
+  detected (docs/limitations.md, PLAN.md section 17).
+
+### Fixed
+
+- A scorer whose baseline was constant alarmed on schedule: 0.1.0 clipped
+  a baseline of 0 in 240 observations to 0.0021 and the downward bettor
+  accumulated the gap until it crossed the threshold inside window 13 of a
+  28-window null chain, identically on every run (`refusal` and
+  `truncated` on any provider that never refuses, and `output_chars`
+  through its sign stream when every non-tied value lies above the
+  median). Found in the smoke profile of the EXP-A pre-registration.
+
+### Added
+
+- `epicormic.stats.rate_interval`: the two-sided exact binomial interval,
+  in pure Python, checked against reference values.
+
 ### Documentation
 
 - README links to the docs are absolute GitHub URLs, so they resolve on
   the PyPI project page as well as on GitHub.
+- README: the shell loop passes a behavioural scorer configuration, because
+  the default set includes `latency_s` and a pair of unchanged mock windows
+  reported drift in latency without one (D22); the locked example output
+  is regenerated for 0.2.0.
+- docs/statistics.md section 7, docs/evidence-format.md, docs/limitations.md
+  and PLAN.md sections 3 (D27), 8.2 and 17 describe the interval null.
 
 ## [0.1.0] - 2026-09-27
 

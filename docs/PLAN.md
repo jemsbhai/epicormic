@@ -4,10 +4,10 @@ Status: v0.1 specification, approved, implemented. Phases 0 to 8
 (scaffold, observation, scorers, Layer A and Layer B statistics, verdict,
 opinion, ledger, levers, CLI, pytest plugin, JSON-LD extra, examples,
 documentation set, installed-wheel smoke test) are done and tested at 100
-percent line coverage; 0.1.0 is the first functional release. Next: Phase
-9 (experiments and the paper) in a separate repository. Decisions D1 to
-D11 and D13 to D26 are approved; D12 is declined. Last updated
-2026-09-30.
+percent line coverage; 0.1.0 is the first functional release and 0.2.0
+corrects the e-process null (D27). Next: Phase 9 (experiments and the
+paper) in a separate repository. Decisions D1 to D11 and D13 to D27 are
+approved; D12 is declined. Last updated 2026-10-28.
 
 This document is the single source of truth for what epicormic is, why each
 part exists, and what remains. A fresh session or a coding agent should be
@@ -284,6 +284,40 @@ Approved 2026-09-27:
   if it is not, the arm is dropped and the drop is logged, not worked
   around. The pristine control is unchanged and must stay `stable` on all
   28 days.
+- D27 (2026-10-28, correction found during the EXP-A smoke run, released
+  as 0.2.0). The e-process null is the exact binomial (Clopper-Pearson)
+  interval of the baseline rate, not a clipped point estimate. In 0.1.0
+  the plug-in `mu0` was clipped half an observation away from 0 and 1, and
+  the betting process accumulates any constant gap between the null and
+  the truth without bound (D22), so a scorer whose baseline is constant
+  alarmed on schedule: `refusal` and `truncated` at 0 in 240 baseline
+  observations were clipped to 0.0021 and reached the threshold inside
+  window 13 of a 28-window null chain, identically in every replication,
+  and `output_chars` did the same through its sign stream because every
+  non-tied value lay above the median and the clipped rate was 0.958. The
+  same mechanism, slower, applies to any estimated rate: a plug-in error
+  of 0.02 at a rate of 0.9 crosses the threshold within an EXP-D horizon.
+  Under D27 the upward bettor stakes against the interval's upper bound
+  and the downward bettor against its lower bound, so each wealth is a
+  nonnegative supermartingale whenever the true rate lies in the interval,
+  and Ville's inequality applies there. The false alarm budget `alpha` is
+  split in two: the interval has confidence `1 - alpha / 2` and the alarm
+  threshold is `2 / alpha` (40 at alpha 0.05, so the half-threshold
+  warning fires at 20), bounding the probability of a false alarm by
+  `alpha / 2 + alpha / 2`. A constant baseline gives a one-sided interval
+  (`[0, u]` or `[l, 1]`): the bettor on the closed side never moves, the
+  other side still detects a change, and the degenerate case needs no
+  clipping. Consequences recorded in sections 8.2 and 17 and in
+  docs/statistics.md: the e-process now has an effect-size floor equal to
+  the width of the baseline interval, which shrinks as the baseline grows;
+  the point null stays available to callers of `betting_eprocess` through
+  `mu0`, at threshold `1 / alpha`; `clipped_rate` is kept for them and is
+  no longer used by the verdict; the verdict payload gains `lower`,
+  `upper`, and `interval_confidence` in the eprocess block, `mu0` becomes
+  the unclipped point estimate, and `threshold` records the value in
+  force. Verdict identities change, as they do on every release through
+  `epicormic_version`. The two-sample sequential test that removes the
+  baseline estimate altogether remains a later item.
 
 Declined:
 
@@ -672,25 +706,31 @@ form for decreases). Initial defaults `delta = 0.05`, `lambda = 0.5`.
 
 Betting e-process (anytime-valid) on per-observation indicator streams.
 For an indicator scorer, order every current observation across windows by
-(window, probe index, attempt) and let `x_i` in {0, 1}. Let `mu0` be the
-pooled baseline rate for that scorer (plug-in). The upward wealth is
-`K+_i = K+_(i-1) * (1 + lam * (x_i - mu0))` with `lam` in `(0, 1/mu0)`, the
-downward wealth is `K-_i = K-_(i-1) * (1 - lam * (x_i - mu0))` with `lam` in
-`(0, 1/(1 - mu0))`, each averaged over the configured grid of fractions of
-its maximum `lam` (an average of e-processes is an e-process), and the
-two-sided e-value is `E_i = (K+_i + K-_i) / 2`. Alarm when
-`E_i >= 1 / alpha`. By Ville's inequality the probability of ever alarming
-under the null (mean `mu0`) is at most alpha, at any stopping time. For
-scalar scorers the stream is the per-probe sign transform
+(window, probe index, attempt) and let `x_i` in {0, 1}. Let `[l, u]` be the
+exact binomial (Clopper-Pearson) interval of the pooled baseline rate for
+that scorer at confidence `1 - alpha/2` (D27). The upward wealth is
+`K+_i = K+_(i-1) * (1 + lam * (x_i - u))` with `lam` in `(0, 1/u)`, the
+downward wealth is `K-_i = K-_(i-1) * (1 - lam * (x_i - l))` with `lam` in
+`(0, 1/(1 - l))`, each averaged over the configured grid of fractions of
+its maximum `lam` (an average of supermartingales is a supermartingale),
+and the two-sided e-value is `E_i = (K+_i + K-_i) / 2`. Alarm when
+`E_i >= 2 / alpha`. Whenever the true rate lies in `[l, u]` every `K` is a
+nonnegative supermartingale with initial value 1, so by Ville's inequality
+the probability of ever alarming is at most alpha/2 at any stopping time;
+the interval misses the true rate with probability at most alpha/2; the
+false alarm probability is therefore at most alpha. For scalar scorers the
+stream is the per-probe sign transform
 `x_i = 1[score_i > baseline median of that probe]` with ties excluded and
-counted, and `mu0` is the baseline's own above-median rate among non-ties,
-pooled across probes and clipped away from 0 and 1 (D21); it equals one
-half only when the score distribution has no mass at the median. Documented
-caveat: `mu0` is an estimate from the baseline in both cases; the guarantee
-is exact only when the baseline is large relative to the current stream,
-and the verdict records the baseline sample count so the reader can judge.
-A two-sample sequential test that removes the plug-in is the v0.2 research
-item.
+counted, and the interval is that of the baseline's own above-median rate
+among non-ties, pooled across probes (D21); the rate equals one half only
+when the score distribution has no mass at the median. A constant baseline
+gives a one-sided interval and needs no clipping: the bettor on the closed
+side never moves and the other side still detects a change. The interval
+is the e-process's effect-size floor: a true rate inside it is never
+detected, and the interval narrows as the baseline grows, so the verdict
+records `lower`, `upper`, `interval_confidence`, and the baseline sample
+count. A two-sample sequential test that removes the baseline estimate
+altogether is a later research item.
 
 The e-process state (wealth per grid point per scorer, count of observations
 consumed) is recomputed from the store every time, never cached, so a
@@ -1179,13 +1219,16 @@ Publication decision follows the numbers, as with pollard.
   declared from silent change and nothing finer.
 - Power depends on N and panel size; with N below 5 most tests are
   `unknown` by design.
-- The e-process plug-in baseline rate is an estimate; the anytime-valid
-  guarantee is exact only in the limit of a large baseline.
+- The e-process null is the baseline's exact binomial interval (D27); the
+  anytime-valid bound holds at the configured alpha, half of which is spent
+  on the interval, and a shift that stays inside the interval is not
+  detected. The interval narrows as the baseline grows.
 - Repeated windows against one fixed baseline make per-window statistics
   dependent; CUSUM and Page-Hinkley are heuristics here and are labelled as
   such; the e-process is the guaranteed detector.
-- The e-process has no effect-size floor: any systematic shift in a
-  monitored rate, however small, is eventually detected (D22). Operational
+- The e-process's only effect-size floor is the width of the baseline
+  interval (D22, narrowed by D27): any systematic shift in a monitored
+  rate that leaves the interval is eventually detected. Operational
   scorers such as latency therefore report real but possibly trivial
   shifts; choose the scorer set for the question being asked.
 - Scorer code is caller-trusted and can leak values; built-ins do not.
